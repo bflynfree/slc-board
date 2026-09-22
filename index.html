@@ -558,21 +558,41 @@ function showJoke(setup, punch){
   if(!el) return;
   el.innerHTML = punch ? setup+'<div class="jp">'+punch+'</div>' : setup;
 }
+async function fetchJokeJson(url, headers){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), 10000);
+  try{
+    const res = await fetch(url, {signal:ctrl.signal, mode:'cors', headers: headers||{}});
+    clearTimeout(t);
+    if(!res.ok) throw new Error('http '+res.status);
+    return await res.json();
+  }catch(e){
+    clearTimeout(t);
+    throw e;
+  }
+}
 async function loadJoke(){
-  const key = 'slc-joke-'+todayKey();
+  const key = 'slc-dadjoke-'+todayKey();
   try{
     const saved = localStorage.getItem(key);
     if(saved){ const j=JSON.parse(saved); showJoke(j.setup,j.punch); return; }
   }catch(e){}
+  let setup='', punch='';
   try{
-    const j = await fetchT('https://v2.jokeapi.dev/joke/Pun,Programming,Misc?safe-mode', 10000);
-    if(j && !j.error){
-      const setup = j.type==='twopart' ? j.setup : j.joke;
-      const punch = j.type==='twopart' ? j.delivery : '';
-      showJoke(setup, punch);
-      try{ localStorage.setItem(key, JSON.stringify({setup,punch})); }catch(e){}
-    }else showJoke('No joke today.','');
-  }catch(e){ showJoke('Joke feed offline.',''); }
+    const j = await fetchJokeJson('https://icanhazdadjoke.com/', {Accept:'application/json'});
+    if(j && j.joke){ setup=j.joke; punch=''; }
+  }catch(e){}
+  if(!setup){
+    try{
+      const j = await fetchJokeJson('https://official-joke-api.appspot.com/jokes/dad/random');
+      const row = Array.isArray(j) ? j[0] : j;
+      if(row && row.setup){ setup=row.setup; punch=row.punchline||''; }
+    }catch(e){}
+  }
+  if(setup){
+    showJoke(setup, punch);
+    try{ localStorage.setItem(key, JSON.stringify({setup,punch})); }catch(e){}
+  }else showJoke('Dad joke feed offline.','');
 }
 
 async function refreshAll(){
