@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <title>Current Traffic &amp; Weather — SLC Hub</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -530,6 +532,7 @@ async function refreshAll(){
   paintFallbackTimes();
   await refreshAll();
   setInterval(refreshAll, 5*60*1000);
+  setInterval(function(){ location.reload(); }, 10*60*1000);
 })();
 </script>
 </body>
