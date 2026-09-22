@@ -133,14 +133,16 @@
   }
   .wx{
     background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 7px 6px;
+    height:100%;min-height:148px;display:flex;flex-direction:column;
   }
-  .wx .name{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .wx .now{display:flex;align-items:flex-end;gap:6px;margin:2px 0 3px}
-  .wx .temp{font-family:Orbitron,sans-serif;font-size:20px;font-weight:800;line-height:1}
+  .wx .name{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:16px;line-height:16px}
+  .wx .now{display:flex;align-items:flex-end;gap:6px;margin:2px 0 3px;min-height:42px}
+  .wx .temp{font-family:Orbitron,sans-serif;font-size:20px;font-weight:800;line-height:1;min-width:52px}
   .wx .temp small{font-size:10px;color:var(--dim);font-weight:600}
-  .wx .meta{font-size:10px;color:var(--dim);line-height:1.25}
-  .fc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;border-top:1px solid var(--line);padding-top:3px;margin-top:3px}
-  .fc div{text-align:center;font-size:9px}
+  .wx .meta{font-size:10px;color:var(--dim);line-height:1.25;min-height:38px}
+  .wx .windline{min-height:28px;line-height:1.25}
+  .fc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;border-top:1px solid var(--line);padding-top:3px;margin-top:auto}
+  .fc div{text-align:center;font-size:9px;min-height:36px}
   .fc .d{color:var(--ice);font-weight:700}
   .fc .r{font-family:Orbitron,sans-serif;font-size:10px}
   .fc .c{color:var(--dim)}
@@ -449,17 +451,25 @@ async function weather(){
   }
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   document.getElementById('wxGrid').innerHTML = cards.map(({p,j})=>{
-    if(!j) return `<div class="wx"><div class="name">${p.name}<\/div>n/a<\/div>`;
+    if(!j) return `<div class="wx">
+      <div class="name">${p.name}<\/div>
+      <div class="now"><div class="temp">—<small>°F<\/small><\/div><div class="meta">n/a<br>Humidity —%<br>Rain 0.00" · Snow 0.00"<\/div><\/div>
+      <div class="windline">— mph · gust — · No advisory<\/div>
+      <div class="fc"><div><div class="d">—<\/div><div class="r">—<\/div><div class="c">—<\/div><\/div><div><div class="d">—<\/div><div class="r">—<\/div><div class="c">—<\/div><\/div><div><div class="d">—<\/div><div class="r">—<\/div><div class="c">—<\/div><\/div><\/div>
+    <\/div>`;
     const c=j.current, d=j.daily;
     let f='';
+    let severeDaily=false;
     for(let i=0;i<3;i++){
       const dt=new Date(d.time[i]+'T12:00:00');
       const snow = (d.snowfall_sum && d.snowfall_sum[i]>0);
       const rain = (d.precipitation_sum && d.precipitation_sum[i]>0 && !snow);
       const mark = snow ? '❄️' : rain ? '🌧️' : '';
+      const code = d.weather_code[i];
+      if(code>=95 || code===82 || code===75 || code===77 || code===67 || code===86) severeDaily=true;
       f+=`<div><div class="d">${days[dt.getDay()]} ${dt.getMonth()+1}/${dt.getDate()}<\/div>
           <div class="r">${Math.round(d.temperature_2m_min[i])}°/${Math.round(d.temperature_2m_max[i])}°<\/div>
-          <div class="c">${mark} ${wmo(d.weather_code[i])}<\/div><\/div>`;
+          <div class="c">${mark} ${wmo(code)}<\/div><\/div>`;
     }
     const hot = c.temperature_2m>=95;
     const rainIn = (c.rain||0).toFixed(2);
@@ -471,9 +481,15 @@ async function weather(){
     const localDay = (d.wind_gusts_10m_max&&d.wind_gusts_10m_max[0])||localGst;
     const spd = Math.round(rw ? Math.max(rw.spd, rw.daySpd, localSpd) : localSpd);
     const gst = Math.round(rw ? Math.max(rw.gst, rw.dayGst, localGst, localDay) : Math.max(localGst, localDay));
-    let flash='', windLabel='No wind advisory';
-    if(spd>=40 || gst>=58){ flash='flash-red'; windLabel='HIGH WIND WARNING'; }
-    else if(spd>=31 || gst>=46){ flash='flash-yellow'; windLabel='WIND ADVISORY'; }
+    const rCode = rw && rw.code!=null ? rw.code : c.weather_code;
+    const severeWx = severeDaily || rCode>=95 || rCode===82 || rCode===75 || rCode===77 || rCode===67 || rCode===86 || (rw && rw.snow>=0.25);
+    const windWarn = spd>=40 || gst>=58;
+    const windAdv = spd>=31 || gst>=46;
+    let flash='', windLabel='No advisory';
+    if(windWarn && severeWx){ flash='flash-red'; windLabel='HIGH WIND + SEVERE WX'; }
+    else if(windWarn){ flash='flash-red'; windLabel='HIGH WIND WARNING'; }
+    else if(severeWx){ flash='flash-red'; windLabel='SEVERE WEATHER'; }
+    else if(windAdv){ flash='flash-yellow'; windLabel='WIND ADVISORY'; }
     const scope = rw ? 'along route' : 'at city';
     return `<div class="wx ${flash}">
       <div class="name">${precipIcon(c.weather_code)} ${p.name}<\/div>
@@ -515,8 +531,8 @@ function paintFallbackTimes(){
 async function refreshAll(){
   document.getElementById('status').textContent = ' Updating…';
   try{ await routes(); }catch(e){ paintFallbackTimes(); }
-  try{ await weather(); }catch(e){}
   try{ await loadRouteWinds(); }catch(e){}
+  try{ await weather(); }catch(e){}
   try{ await loadRadar(); }catch(e){}
   const when = new Date().toLocaleString('en-US',{
     timeZone:'America/Denver', hour:'numeric', minute:'2-digit', second:'2-digit', timeZoneName:'short'
