@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Current Traffic &amp; Weather — SLC Hub</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Roboto:wght@400;500;700&display=swap');
+  :root {
+    --bg:#07121f; --panel:#0b1c30; --line:#1a3a5c;
+    --ice:#4fc3f7; --txt:#eaf6ff; --dim:#8aa4bb; --hot:#ff8a65;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#050b14;color:var(--txt);font-family:Roboto,system-ui,sans-serif}
+  body{
+    height:100vh;
+    background:linear-gradient(#07121f,#050b14);
+  }
+  .board{
+    height:100vh;width:100%;
+    display:grid;
+    grid-template-rows:auto 1fr auto auto;
+    padding:6px 10px 6px;
+    gap:4px;
+    max-width:100%;
+  }
+  .mast{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    min-height:42px;
+  }
+  .mast h1{
+    font-family:Orbitron,sans-serif;font-weight:900;letter-spacing:.14em;
+    font-size:clamp(18px,2.6vw,34px);color:#fff;
+    text-shadow:0 0 12px #29b6f6,0 0 28px #0277bd;
+  }
+  .mast-right{text-align:right;font-size:12px;color:var(--dim);line-height:1.35}
+  .mast-right b{color:#fff}
+  #clock{font-family:Orbitron,sans-serif;color:#fff;letter-spacing:.04em;font-size:13px}
+  .traffic-row{
+    display:grid;grid-template-columns:1fr 280px;gap:8px;min-height:0;
+  }
+  .map-wrap{position:relative;min-height:0;height:100%}
+  #map{
+    height:100%;min-height:0;
+    border:2px solid #1e4a72;border-radius:6px;
+    box-shadow:0 0 20px rgba(41,182,246,.16);
+    background:#0a2033;
+    position:relative;
+  }
+  #radarClock{
+    position:absolute;top:10px;right:10px;z-index:500;
+    background:rgba(11,28,48,.88);border:1px solid #1e4a72;border-radius:4px;
+    padding:4px 8px;font-size:11px;color:#eaf6ff;pointer-events:none;
+    font-family:Orbitron,sans-serif;letter-spacing:.04em;
+  }
+  .leaflet-control-attribution{font-size:8px;background:rgba(7,18,31,.65);color:#9ab}
+  .eta-col{
+    display:flex;flex-direction:column;gap:5px;min-height:0;overflow:hidden;
+  }
+  .eta-col h2{
+    font-family:Orbitron,sans-serif;font-size:11px;letter-spacing:.12em;color:var(--ice);
+  }
+  .eta{
+    background:var(--panel);border:1px solid var(--line);
+    border-left:5px solid var(--ice);border-radius:5px;
+    padding:5px 8px;display:grid;grid-template-columns:18px 1fr auto;gap:6px;align-items:center;
+    flex:1;min-height:0;
+  }
+  .eta .n{font-family:Orbitron,sans-serif;color:var(--ice);font-size:13px}
+  .eta h3{font-size:12px;font-weight:700;line-height:1.15}
+  .eta .via{font-size:10px;color:var(--dim)}
+  .eta .t{font-family:Orbitron,sans-serif;font-size:14px;text-align:right;white-space:nowrap}
+  .eta.closed{background:#2a1212}
+  .eta .closed-tag{color:#ef9a9a;font-weight:800;font-size:10px;letter-spacing:.06em}
+  .eta .mi{font-size:10px;color:var(--dim);text-align:right}
+  .wx-wrap{min-height:0}
+  .sec{
+    font-family:Orbitron,sans-serif;font-weight:800;letter-spacing:.14em;
+    font-size:clamp(14px,1.8vw,22px);color:#fff;text-align:left;
+    text-shadow:0 0 10px #29b6f6;padding:2px 0 3px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+  }
+  .credit{
+    font-family:Orbitron,sans-serif;font-weight:700;letter-spacing:.08em;
+    font-size:clamp(10px,1.1vw,13px);color:#fff;
+    text-shadow:0 0 8px #29b6f6;white-space:nowrap;margin-left:14px;
+  }
+  .legend-radar{
+    display:flex;align-items:center;gap:10px;font-family:Roboto,sans-serif;
+    font-weight:400;letter-spacing:0;font-size:10px;color:var(--dim);text-shadow:none;flex-wrap:wrap;justify-content:flex-end;
+  }
+  .sw{width:46px;height:8px;border-radius:2px;display:inline-block;
+    background:linear-gradient(90deg,#9be7ff,#3d5afe 25%,#00e676 45%,#ffeb3b 62%,#ff9800 78%,#f44336 92%,#fff)}
+  .inch-key{display:flex;align-items:center;gap:6px}
+  .inch-key b{color:#fff;font-weight:600}
+  .bar-rain{width:70px;height:8px;border-radius:2px;display:inline-block;
+    background:linear-gradient(90deg,#e3f2fd,#64b5f6,#1565c0,#0d47a1)}
+  .bar-snow{width:70px;height:8px;border-radius:2px;display:inline-block;
+    background:linear-gradient(90deg,#fafafa,#b3e5fc,#81d4fa,#ffffff)}
+  .wx.flash-yellow{
+    animation:flashY 1s ease-in-out infinite;
+    border-color:#ffb74d;
+  }
+  .wx.flash-red{
+    animation:flashR .8s ease-in-out infinite;
+    border-color:#ef5350;
+  }
+  @keyframes flashY{
+    0%,100%{background:#0b1c30;box-shadow:0 0 0 rgba(255,183,77,0)}
+    50%{background:#3a2e10;box-shadow:0 0 16px rgba(255,183,77,.65)}
+  }
+  @keyframes flashR{
+    0%,100%{background:#0b1c30;box-shadow:0 0 0 rgba(239,83,80,0)}
+    50%{background:#3a1212;box-shadow:0 0 18px rgba(239,83,80,.75)}
+  }
+  .wx .windline{font-size:10px;margin-top:3px;color:var(--dim)}
+  .wx.flash-yellow .windline{color:#ffcc80;font-weight:700}
+  .wx.flash-red .windline{color:#ef9a9a;font-weight:700}
+  .map-key{
+    background:rgba(11,28,48,.92);color:#eaf6ff;padding:6px 8px;border-radius:6px;
+    border:1px solid #1e4a72;font-size:10px;line-height:1.35;min-width:168px;
+  }
+  .map-key h4{font-family:Orbitron,sans-serif;font-size:9px;letter-spacing:.08em;color:#4fc3f7;margin-bottom:4px}
+  .map-key .row{display:flex;align-items:center;gap:6px;margin:3px 0}
+  .wx-grid{
+    display:grid;grid-template-columns:repeat(8,1fr);gap:6px;
+  }
+  .wx{
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 7px 6px;
+  }
+  .wx .name{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wx .now{display:flex;align-items:flex-end;gap:6px;margin:2px 0 3px}
+  .wx .temp{font-family:Orbitron,sans-serif;font-size:20px;font-weight:800;line-height:1}
+  .wx .temp small{font-size:10px;color:var(--dim);font-weight:600}
+  .wx .meta{font-size:10px;color:var(--dim);line-height:1.25}
+  .fc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;border-top:1px solid var(--line);padding-top:3px;margin-top:3px}
+  .fc div{text-align:center;font-size:9px}
+  .fc .d{color:var(--ice);font-weight:700}
+  .fc .r{font-family:Orbitron,sans-serif;font-size:10px}
+  .fc .c{color:var(--dim)}
+  .hot{color:var(--hot)}
+  footer{text-align:center;color:var(--dim);font-size:10px;line-height:1.2;padding:1px 0}
+  .badge-time{
+    background:#0b1c30ee;border:1px solid #4fc3f7;color:#fff;
+    font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;
+    padding:3px 7px;border-radius:4px;white-space:nowrap;
+    box-shadow:0 0 10px rgba(79,195,247,.35);
+  }
+  .badge-time span{display:block;font-family:Roboto,sans-serif;font-size:9px;font-weight:500;color:#9ad;letter-spacing:0}
+  .wx-pin{
+    width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;border:2px solid #fff;background:#0b1c30;
+    box-shadow:0 0 8px rgba(0,0,0,.4);
+  }
+  @media (max-width:1200px){
+    .traffic-row{grid-template-columns:1fr 230px}
+    .wx-grid{grid-template-columns:repeat(4,1fr)}
+    html,body{overflow:auto}
+  }
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="mast">
+    <h1>CURRENT TRAFFIC</h1>
+    <div class="mast-right">
+      <div>FROM <b>380 S 6400 W, Salt Lake City, UT 84104</b></div>
+      <div id="clock">—</div>
+    </div>
+  </div>
+
+  <div class="traffic-row">
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div id="radarClock">Radar loop —</div>
+    </div>
+    <div class="eta-col" id="etaCol">Loading drive times…</div>
+  </div>
+
+  <div class="wx-wrap">
+    <div class="sec">
+      <span>CURRENT WEATHER <span class="credit">Created by AUSTIN PLATT</span></span>
+    </div>
+    <div class="wx-grid" id="wxGrid">Loading weather…</div>
+  </div>
+  <footer>
+    Map framed so destinations sit near the edges. Radar: RainViewer (rain &amp; snow). Times: OSRM fastest path (not live congestion).
+    <span id="status"></span>
+  </footer>
+</div>
+
+<script>
+const ORIGIN = { name:'Salt Lake City, UT', lat:40.7539165, lon:-112.0440868 };
+
+const DEST = [
+  { name:'Dove Creek, CO',   lat:37.7638, lon:-108.9057, color:'#42a5f5', via:'US-6 / US-191', fallback:{duration:22863, distance:512205} },
+  { name:'Dubois, ID',       lat:44.176298, lon:-112.230820, color:'#66bb6a', via:'I-15 N', fallback:{duration:15912, distance:429663} },
+  { name:'Carlin, NV',       lat:40.713059, lon:-116.107088, color:'#ffa726', via:'I-80 W', fallback:{duration:14508, distance:395846} },
+  { name:'St. George, UT',   lat:37.109877, lon:-113.583206, color:'#ff7043', via:'I-15 S', fallback:{duration:18756, distance:494000} },
+  { name:'Beaver, UT',       lat:38.276900, lon:-112.641100, color:'#26c6da', via:'I-15 S', fallback:{duration:12816, distance:328309} },
+  { name:'Rawlins, WY',      lat:41.790788, lon:-107.239176, color:'#ab47bc', via:'I-80 E', fallback:{duration:18108, distance:479547} },
+  { name:'Rock Springs, WY', lat:41.586056, lon:-109.219454, color:'#ef5350', via:'I-80 E', fallback:{duration:11880, distance:305775} }
+];
+
+const ALL = [ORIGIN, ...DEST];
+let map = null;
+let FRAME = null;
+
+function destBounds(){
+  return L.latLngBounds(ALL.map(p => [p.lat, p.lon]));
+}
+
+function initMap(){
+  if(typeof L === 'undefined'){
+    document.getElementById('status').textContent = ' Map library blocked — times still load';
+    return false;
+  }
+  map = L.map('map', {
+    zoomControl:true, attributionControl:false,
+    dragging:true, touchZoom:true, scrollWheelZoom:true,
+    doubleClickZoom:true, boxZoom:true, keyboard:true
+  });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:18, attribution:'OSM'
+  }).addTo(map);
+  FRAME = destBounds();
+  map.fitBounds(FRAME, {animate:false, padding:[18,18]});
+  setTimeout(()=>{ try{ map.invalidateSize(); map.fitBounds(FRAME,{padding:[18,18]}); }catch(e){} }, 400);
+  return true;
+}
+
+async function fetchT(url, ms){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms||12000);
+  try{
+    const res = await fetch(url, {signal:ctrl.signal, mode:'cors'});
+    clearTimeout(t);
+    if(!res.ok) throw new Error('http '+res.status);
+    return await res.json();
+  }catch(e){
+    clearTimeout(t);
+    throw e;
+  }
+}
+
+function fmtTime(sec){
+  const m = Math.round(sec/60);
+  const h = Math.floor(m/60), mm = m%60;
+  return h ? (mm ? `${h} hr ${mm} min` : `${h} hr`) : `${mm} min`;
+}
+function fmtMi(m){ return Math.round(m/1609.34) + ' mi'; }
+
+function wmo(c){
+  if(c===0) return 'Clear';
+  if(c<=3) return 'Mostly Sunny';
+  if(c<=48) return 'Hazy / Fog';
+  if(c<=57) return 'Drizzle';
+  if(c<=67) return 'Rain';
+  if(c<=77) return 'Snow';
+  if(c<=82) return 'Showers';
+  if(c<=99) return 'T-Storms';
+  return '—';
+}
+function precipIcon(code){
+  if(code>=71 && code<=77) return '❄️';
+  if(code>=85 && code<=86) return '❄️';
+  if(code>=95) return '⛈️';
+  if(code>=51 && code<=67) return '🌧️';
+  if(code>=80 && code<=82) return '🌧️';
+  if(code>=1 && code<=3) return '⛅';
+  if(code===0) return '☀️';
+  return '☁️';
+}
+
+let radarLayer = null;
+let radarLayers = [];
+let radarTimer = null;
+let radarFrames = [];
+let radarIdx = 0;
+
+function radarLabel(ts){
+  return new Date(ts*1000).toLocaleString('en-US',{
+    timeZone:'America/Denver',
+    month:'short', day:'numeric',
+    hour:'numeric', minute:'2-digit',
+    timeZoneName:'short'
+  });
+}
+
+async function loadRadar(){
+  try{
+    if(!map || typeof L === 'undefined') return;
+    const j = await fetchT('https://api.rainviewer.com/public/weather-maps.json', 12000);
+    const host = j.host || 'https://tilecache.rainviewer.com';
+    const past = (j.radar && j.radar.past) ? j.radar.past.slice() : [];
+    if(!past.length) return;
+    radarFrames = past.sort((a,b)=>a.time-b.time);
+    radarLayers.forEach(ly=>{ try{ map.removeLayer(ly); }catch(e){} });
+    radarLayers = radarFrames.map(f => L.tileLayer(
+      host + f.path + '/256/{z}/{x}/{y}/2/1_1.png',
+      {opacity:0, zIndex:400, maxZoom:18, maxNativeZoom:7, tileSize:256}
+    ));
+    radarLayers.forEach(ly => ly.addTo(map));
+    radarIdx = 0;
+    if(radarTimer) clearInterval(radarTimer);
+    showRadarFrame(0);
+    radarTimer = setInterval(()=>{
+      radarIdx = (radarIdx + 1) % radarFrames.length;
+      showRadarFrame(radarIdx);
+    }, 800);
+  }catch(e){}
+}
+
+function showRadarFrame(i){
+  radarLayers.forEach((ly, idx) => ly.setOpacity(idx===i ? 0.65 : 0));
+  radarLayer = radarLayers[i];
+  const f = radarFrames[i];
+  const el = document.getElementById('radarClock');
+  if(el && f){
+    el.textContent = `Radar ${i+1}/${radarFrames.length} · ${radarLabel(f.time)}`;
+  }
+}
+
+const wxPins = {};
+const ROUTE_WIND = {};
+
+function sampleCoords(coords, n){
+  if(!coords || !coords.length) return [];
+  const count = Math.min(n, coords.length);
+  const out = [];
+  for(let i=0;i<count;i++){
+    const idx = Math.round(i*(coords.length-1)/Math.max(count-1,1));
+    out.push(coords[idx]);
+  }
+  return out;
+}
+
+async function windAt(lat, lon){
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_gusts_10m,rain,snowfall,precipitation,weather_code&daily=wind_speed_10m_max,wind_gusts_10m_max&wind_speed_unit=mph&precipitation_unit=inch&timezone=America/Denver&forecast_days=1`;
+  const j = await fetchT(url, 10000);
+  return {
+    spd: j.current.wind_speed_10m||0,
+    gst: j.current.wind_gusts_10m||0,
+    daySpd: (j.daily.wind_speed_10m_max&&j.daily.wind_speed_10m_max[0])||0,
+    dayGst: (j.daily.wind_gusts_10m_max&&j.daily.wind_gusts_10m_max[0])||0,
+    rain: j.current.rain||0,
+    snow: j.current.snowfall||0,
+    precip: j.current.precipitation||0,
+    code: j.current.weather_code||0
+  };
+}
+
+async function loadRouteWinds(){
+  await Promise.all(DEST.map(async d=>{
+    try{
+      const url = `https://router.project-osrm.org/route/v1/driving/${ORIGIN.lon},${ORIGIN.lat};${d.lon},${d.lat}?overview=simplified&geometries=geojson`;
+      const j = await fetchT(url, 12000);
+      const coords = (j.routes && j.routes[0] && j.routes[0].geometry.coordinates)||[];
+      const pts = sampleCoords(coords, 3);
+      const winds = await Promise.all(pts.map(c=>windAt(c[1], c[0])));
+      ROUTE_WIND[d.name] = winds.reduce((m,w)=>({
+        spd: Math.max(m.spd, w.spd),
+        gst: Math.max(m.gst, w.gst),
+        daySpd: Math.max(m.daySpd, w.daySpd),
+        dayGst: Math.max(m.dayGst, w.dayGst),
+        rain: Math.max(m.rain, w.rain||0),
+        snow: Math.max(m.snow, w.snow||0),
+        precip: Math.max(m.precip, w.precip||0),
+        code: Math.max(m.code, w.code||0)
+      }), {spd:0,gst:0,daySpd:0,dayGst:0,rain:0,snow:0,precip:0,code:0});
+    }catch(e){
+      ROUTE_WIND[d.name] = null;
+    }
+  }));
+}
+
+async function osrmDrive(d){
+  const url = `https://router.project-osrm.org/route/v1/driving/${ORIGIN.lon},${ORIGIN.lat};${d.lon},${d.lat}?overview=false`;
+  for(let attempt=0; attempt<3; attempt++){
+    try{
+      const j = await fetchT(url, 12000);
+      if(j.code==='Ok' && j.routes && j.routes[0]){
+        return {duration:j.routes[0].duration, distance:j.routes[0].distance, ok:true};
+      }
+      if(j.code==='NoRoute') return {duration:null, distance:null, ok:false, closed:true};
+    }catch(e){}
+    await new Promise(r=>setTimeout(r, 400*(attempt+1)));
+  }
+  const fb = d.fallback || {duration:null, distance:null};
+  return {...fb, ok:false};
+}
+
+function applyLiveTime(d, r){
+  const fb = d.fallback || {};
+  const wx = ROUTE_WIND[d.name] || {};
+  const baseDur = (r.duration!=null ? r.duration : fb.duration);
+  const baseDist = (r.distance!=null ? r.distance : fb.distance);
+  let factor = 1;
+  const notes = [];
+  if((wx.snow||0) >= 0.05 || (wx.code>=71 && wx.code<=86)){ factor += 0.35; notes.push('snow'); }
+  else if((wx.rain||0) >= 0.05 || (wx.code>=51 && wx.code<=67) || (wx.code>=80 && wx.code<=82)){ factor += 0.15; notes.push('rain'); }
+  if((wx.gst||0) >= 58 || (wx.dayGst||0) >= 58){ factor += 0.20; notes.push('high wind'); }
+  else if((wx.gst||0) >= 46 || (wx.dayGst||0) >= 46){ factor += 0.12; notes.push('wind'); }
+  const liveDur = baseDur!=null ? Math.round(baseDur * factor) : null;
+  const extra = (fb.duration && liveDur!=null) ? (liveDur - fb.duration) : 0;
+  const closed = !!(r.closed || (extra >= 3*3600));
+  return {
+    duration: liveDur,
+    distance: baseDist,
+    closed,
+    note: closed ? 'ROAD CLOSED' : (notes.length ? notes.join(' + ') : d.via)
+  };
+}
+
+async function routes(){
+  const out = [];
+  for(let i=0;i<DEST.length;i++){
+    const d = DEST[i];
+    const r = applyLiveTime(d, await osrmDrive(d));
+    out.push({...d, i:i+1, duration:r.duration, distance:r.distance, closed:r.closed, note:r.note});
+  }
+  if(map && FRAME) map.fitBounds(FRAME, {animate:false, padding:[18,18]});
+
+  document.getElementById('etaCol').innerHTML = '<h2>DRIVE TIMES<\/h2>' + out.map(r=>`
+    <div class="eta ${r.closed?'closed':''}" style="border-left-color:${r.closed?'#ef5350':r.color}">
+      <div class="n">${r.i}<\/div>
+      <div>
+        <h3>${r.name}<\/h3>
+        <div class="via">${r.closed ? '<span class="closed-tag">ROAD CLOSED<\/span>' : r.note}<\/div>
+      <\/div>
+      <div>
+        <div class="t">${r.closed ? 'ROAD CLOSED' : (r.duration!=null?fmtTime(r.duration):'n/a')}<\/div>
+        <div class="mi">${r.closed ? '3+ hr over normal' : (r.distance!=null?fmtMi(r.distance):'')}<\/div>
+      <\/div>
+    <\/div>`).join('');
+}
+
+async function weather(){
+  const cards = [];
+  for(const p of ALL){
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,precipitation,rain,snowfall,wind_speed_10m,wind_gusts_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,rain_sum,wind_speed_10m_max,wind_gusts_10m_max&temperature_unit=fahrenheit&precipitation_unit=inch&wind_speed_unit=mph&timezone=America/Denver&forecast_days=3`;
+    try{
+      cards.push({p, j: await fetchT(url, 12000)});
+    }catch(e){ cards.push({p, j:null}); }
+  }
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  document.getElementById('wxGrid').innerHTML = cards.map(({p,j})=>{
+    if(!j) return `<div class="wx"><div class="name">${p.name}<\/div>n/a<\/div>`;
+    const c=j.current, d=j.daily;
+    let f='';
+    for(let i=0;i<3;i++){
+      const dt=new Date(d.time[i]+'T12:00:00');
+      const snow = (d.snowfall_sum && d.snowfall_sum[i]>0);
+      const rain = (d.precipitation_sum && d.precipitation_sum[i]>0 && !snow);
+      const mark = snow ? '❄️' : rain ? '🌧️' : '';
+      f+=`<div><div class="d">${days[dt.getDay()]} ${dt.getMonth()+1}/${dt.getDate()}<\/div>
+          <div class="r">${Math.round(d.temperature_2m_min[i])}°/${Math.round(d.temperature_2m_max[i])}°<\/div>
+          <div class="c">${mark} ${wmo(d.weather_code[i])}<\/div><\/div>`;
+    }
+    const hot = c.temperature_2m>=95;
+    const rainIn = (c.rain||0).toFixed(2);
+    const snowIn = (c.snowfall||0).toFixed(2);
+    const extra = `Rain ${rainIn}" · Snow ${snowIn}"`;
+    const rw = ROUTE_WIND[p.name];
+    const localSpd = c.wind_speed_10m||0;
+    const localGst = c.wind_gusts_10m||0;
+    const localDay = (d.wind_gusts_10m_max&&d.wind_gusts_10m_max[0])||localGst;
+    const spd = Math.round(rw ? Math.max(rw.spd, rw.daySpd, localSpd) : localSpd);
+    const gst = Math.round(rw ? Math.max(rw.gst, rw.dayGst, localGst, localDay) : Math.max(localGst, localDay));
+    let flash='', windLabel='No wind advisory';
+    if(spd>=40 || gst>=58){ flash='flash-red'; windLabel='HIGH WIND WARNING'; }
+    else if(spd>=31 || gst>=46){ flash='flash-yellow'; windLabel='WIND ADVISORY'; }
+    const scope = rw ? 'along route' : 'at city';
+    return `<div class="wx ${flash}">
+      <div class="name">${precipIcon(c.weather_code)} ${p.name}<\/div>
+      <div class="now">
+        <div class="temp ${hot?'hot':''}">${Math.round(c.temperature_2m)}<small>°F<\/small><\/div>
+        <div class="meta">${wmo(c.weather_code)}<br>Humidity ${c.relative_humidity_2m}%<br>${extra}<\/div>
+      <\/div>
+      <div class="windline">${spd} mph · gust ${gst} · ${windLabel} (${scope})<\/div>
+      <div class="fc">${f}<\/div>
+    <\/div>`;
+  }).join('');
+
+}
+
+function tick(){
+  document.getElementById('clock').textContent = new Date().toLocaleString('en-US',{
+    timeZone:'America/Denver',
+    weekday:'short', month:'short', day:'numeric', year:'numeric',
+    hour:'numeric', minute:'2-digit', second:'2-digit',
+    timeZoneName:'short'
+  });
+}
+setInterval(tick,1000); tick();
+
+function paintFallbackTimes(){
+  document.getElementById('etaCol').innerHTML = '<h2>DRIVE TIMES<\/h2>' + DEST.map((d,i)=>{
+    const r = applyLiveTime(d, d.fallback||{});
+    return `<div class="eta" style="border-left-color:${d.color}">
+      <div class="n">${i+1}<\/div>
+      <div><h3>${d.name}<\/h3><div class="via">${d.via}<\/div><\/div>
+      <div>
+        <div class="t">${r.duration!=null?fmtTime(r.duration):'n/a'}<\/div>
+        <div class="mi">${r.distance!=null?fmtMi(r.distance):''}<\/div>
+      <\/div>
+    <\/div>`;
+  }).join('');
+}
+
+async function refreshAll(){
+  document.getElementById('status').textContent = ' Updating…';
+  try{ await routes(); }catch(e){ paintFallbackTimes(); }
+  try{ await weather(); }catch(e){}
+  try{ await loadRouteWinds(); }catch(e){}
+  try{ await loadRadar(); }catch(e){}
+  const when = new Date().toLocaleString('en-US',{
+    timeZone:'America/Denver', hour:'numeric', minute:'2-digit', second:'2-digit', timeZoneName:'short'
+  });
+  document.getElementById('status').textContent = ' Updated '+when;
+}
+
+(async()=>{
+  try{ initMap(); }catch(e){
+    document.getElementById('status').textContent = ' Map failed: '+e.message;
+  }
+  paintFallbackTimes();
+  await refreshAll();
+  setInterval(refreshAll, 5*60*1000);
+})();
+</script>
+</body>
+</html>
