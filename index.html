@@ -143,7 +143,7 @@
   .fc .r{font-family:Orbitron,sans-serif;font-size:10px}
   .fc .c{color:var(--dim)}
   .hot{color:var(--hot)}
-  footer{text-align:center;color:var(--dim);font-size:10px;line-height:1.2;padding:1px 0}
+  footer{text-align:center;color:var(--dim);font-size:11px;line-height:1.2;padding:2px 0}
   .badge-time{
     background:#0b1c30ee;border:1px solid #4fc3f7;color:#fff;
     font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;
@@ -167,9 +167,10 @@
 <body>
 <div class="board">
   <div class="mast">
-    <h1>CURRENT TRAFFIC</h1>
-    <div class="mast-right">
+    <div class="mast-right" style="text-align:left">
       <div>FROM <b>380 S 6400 W, Salt Lake City, UT 84104</b></div>
+    </div>
+    <div class="mast-right">
       <div id="clock">—</div>
     </div>
   </div>
@@ -183,13 +184,9 @@
   </div>
 
   <div class="wx-wrap">
-    <div class="sec">
-      <span>CURRENT WEATHER <span class="credit">Created by AUSTIN PLATT</span></span>
-    </div>
     <div class="wx-grid" id="wxGrid">Loading weather…</div>
   </div>
   <footer>
-    Map framed so destinations sit near the edges. Radar: RainViewer (rain &amp; snow). Times: OSRM fastest path (not live congestion).
     <span id="status"></span>
   </footer>
 </div>
@@ -522,7 +519,7 @@ async function refreshAll(){
   const when = new Date().toLocaleString('en-US',{
     timeZone:'America/Denver', hour:'numeric', minute:'2-digit', second:'2-digit', timeZoneName:'short'
   });
-  document.getElementById('status').textContent = ' Updated '+when;
+  document.getElementById('status').textContent = 'Updated '+when;
 }
 
 (async()=>{
