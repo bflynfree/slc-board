@@ -571,28 +571,38 @@ async function fetchJokeJson(url, headers){
     throw e;
   }
 }
-async function loadJoke(){
-  const key = 'slc-dadjoke-'+todayKey();
-  try{
-    const saved = localStorage.getItem(key);
-    if(saved){ const j=JSON.parse(saved); showJoke(j.setup,j.punch); return; }
-  }catch(e){}
-  let setup='', punch='';
+function jokeIsClean(text){
+  const t = (text||'').toLowerCase();
+  const blocked = [
+    'sex','sexy','nude','naked','porn','nsfw','xxx','orgasm','viagra',
+    'penis','vagina','boob','breast','horny','hooker','prostitute',
+    'damn','hell ','ass ','asses','asshole','bastard','bitch','crap',
+    'shit','piss','dick','cock','pussy','fuck','fck','wtf',
+    'weed','cocaine','heroin','meth','drunk','beer','whiskey','vodka',
+    'kill','murder','suicide','rape','racist','nazi'
+  ];
+  return !blocked.some(w => t.includes(w));
+}
+async function pullDadJoke(){
   try{
     const j = await fetchJokeJson('https://icanhazdadjoke.com/', {Accept:'application/json'});
-    if(j && j.joke){ setup=j.joke; punch=''; }
+    if(j && j.joke) return {setup:j.joke, punch:''};
   }catch(e){}
-  if(!setup){
-    try{
-      const j = await fetchJokeJson('https://official-joke-api.appspot.com/jokes/dad/random');
-      const row = Array.isArray(j) ? j[0] : j;
-      if(row && row.setup){ setup=row.setup; punch=row.punchline||''; }
-    }catch(e){}
+  try{
+    const j = await fetchJokeJson('https://official-joke-api.appspot.com/jokes/dad/random');
+    const row = Array.isArray(j) ? j[0] : j;
+    if(row && row.setup) return {setup:row.setup, punch:row.punchline||''};
+  }catch(e){}
+  return null;
+}
+async function loadJoke(){
+  for(let i=0;i<6;i++){
+    const j = await pullDadJoke();
+    if(!j || !j.setup) continue;
+    const full = j.setup+' '+ (j.punch||'');
+    if(jokeIsClean(full)){ showJoke(j.setup, j.punch); return; }
   }
-  if(setup){
-    showJoke(setup, punch);
-    try{ localStorage.setItem(key, JSON.stringify({setup,punch})); }catch(e){}
-  }else showJoke('Dad joke feed offline.','');
+  showJoke('Why did the scarecrow get promoted? He was outstanding in his field.','');
 }
 
 async function refreshAll(){
