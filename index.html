@@ -129,7 +129,7 @@
   .map-key h4{font-family:Orbitron,sans-serif;font-size:9px;letter-spacing:.08em;color:#4fc3f7;margin-bottom:4px}
   .map-key .row{display:flex;align-items:center;gap:6px;margin:3px 0}
   .wx-grid{
-    display:grid;grid-template-columns:repeat(8,1fr);gap:6px;
+    display:grid;grid-template-columns:repeat(9,1fr);gap:6px;
   }
   .wx{
     background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 7px 6px;
@@ -198,6 +198,7 @@ const ORIGIN = { name:'Salt Lake City, UT', lat:40.7539165, lon:-112.0440868 };
 const DEST = [
   { name:'Dove Creek, CO',   lat:37.7638, lon:-108.9057, color:'#42a5f5', via:'US-6 / US-191', fallback:{duration:22863, distance:512205} },
   { name:'Dubois, ID',       lat:44.176298, lon:-112.230820, color:'#66bb6a', via:'I-15 N', fallback:{duration:15912, distance:429663} },
+  { name:'Mountain Home, ID', lat:43.1329, lon:-115.6912, color:'#9ccc65', via:'I-84 W', fallback:{duration:18058, distance:487293} },
   { name:'Carlin, NV',       lat:40.713059, lon:-116.107088, color:'#ffa726', via:'I-80 W', fallback:{duration:14508, distance:395846} },
   { name:'St. George, UT',   lat:37.109877, lon:-113.583206, color:'#ff7043', via:'I-15 S', fallback:{duration:18756, distance:494000} },
   { name:'Beaver, UT',       lat:38.276900, lon:-112.641100, color:'#26c6da', via:'I-15 S', fallback:{duration:12816, distance:328309} },
