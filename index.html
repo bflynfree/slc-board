@@ -431,12 +431,14 @@ function applyLiveTime(d, r){
   else if((wx.gst||0) >= 46 || (wx.dayGst||0) >= 46){ factor += 0.12; notes.push('wind'); }
   const liveDur = baseDur!=null ? Math.round(baseDur * factor) : null;
   const extra = (fb.duration && liveDur!=null) ? (liveDur - fb.duration) : 0;
-  const closed = !!(r.closed || (extra >= 3*3600));
+  const delayed = extra >= 3*3600;
+  const closed = !!r.closed;
   return {
     duration: liveDur,
     distance: baseDist,
     closed,
-    note: closed ? 'ROAD CLOSED' : (notes.length ? notes.join(' + ') : d.via)
+    delayed,
+    note: closed ? 'Road Closed?' : delayed ? 'Check route for issues' : (notes.length ? notes.join(' + ') : d.via)
   };
 }
 
@@ -445,20 +447,20 @@ async function routes(){
   for(let i=0;i<DEST.length;i++){
     const d = DEST[i];
     const r = applyLiveTime(d, await osrmDrive(d));
-    out.push({...d, i:i+1, duration:r.duration, distance:r.distance, closed:r.closed, note:r.note});
+    out.push({...d, i:i+1, duration:r.duration, distance:r.distance, closed:r.closed, delayed:r.delayed, note:r.note});
   }
   if(map && FRAME) map.fitBounds(FRAME, {animate:false, padding:[18,18]});
 
   document.getElementById('etaCol').innerHTML = out.map(r=>`
-    <div class="eta ${r.closed?'closed':''}" style="border-left-color:${r.closed?'#ef5350':r.color}">
+    <div class="eta ${r.closed?'closed':(r.delayed?'alert':'')}" style="border-left-color:${r.closed?'#ef5350':r.color}">
       <div class="n">${r.i}<\/div>
       <div>
         <h3>${r.name}<\/h3>
-        <div class="via">${r.closed ? '<span class="closed-tag">ROAD CLOSED<\/span>' : r.note}<\/div>
+        <div class="via">${r.closed ? '<span class="closed-tag">Road Closed?<\/span>' : r.delayed ? '<span class="closed-tag">Check route for issues<\/span>' : r.note}<\/div>
       <\/div>
       <div>
-        <div class="t">${r.closed ? 'ROAD CLOSED' : (r.duration!=null?fmtTime(r.duration):'n/a')}<\/div>
-        <div class="mi">${r.closed ? '3+ hr over normal' : (r.distance!=null?fmtMi(r.distance):'')}<\/div>
+        <div class="t">${r.closed ? 'Road Closed?' : (r.duration!=null?fmtTime(r.duration):'n/a')}<\/div>
+        <div class="mi">${r.delayed && !r.closed ? '3+ hr over typical' : (r.distance!=null?fmtMi(r.distance):'')}<\/div>
       <\/div>
     <\/div>`).join('');
 }
@@ -575,7 +577,7 @@ function jokeIsClean(text){
   const t = (text||'').toLowerCase();
   const blocked = [
     'sex','sexy','nude','naked','porn','nsfw','xxx','orgasm','viagra',
-    'penis','vagina','boob','breast','horny','hooker','prostitute',
+    'penis','vagina','boob','breast','horny','hooker','prostitut',
     'damn','hell ','ass ','asses','asshole','bastard','bitch','crap',
     'shit','piss','dick','cock','pussy','fuck','fck','wtf',
     'weed','cocaine','heroin','meth','drunk','beer','whiskey','vodka',
