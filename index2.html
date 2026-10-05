@@ -42,7 +42,7 @@
   .eta-wrap{display:flex;flex-direction:column;gap:5px;min-height:0;min-width:0;overflow:hidden}
   .eta-head{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
   .traffic-row{
-    display:grid;grid-template-columns:1fr 280px;gap:8px;min-height:0;
+    display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:8px;min-height:0;min-width:0;
   }
   .map-wrap{position:relative;min-height:0;height:100%}
   #map{
@@ -209,6 +209,7 @@
   </div>
   <footer>
     <span class="credit">Created By Austin Platt</span>
+    <span id="clock">—</span>
     <span id="status"></span>
   </footer>
 </div>
@@ -262,14 +263,7 @@ function initMap(){
 
 function centerOnSLC(){
   if(!map) return;
-  let maxMi = 180;
-  DEST.forEach(d => {
-    const dy = (d.lat - ORIGIN.lat) * 69;
-    const dx = (d.lon - ORIGIN.lon) * 69 * Math.cos(ORIGIN.lat * Math.PI/180);
-    maxMi = Math.max(maxMi, Math.sqrt(dx*dx + dy*dy));
-  });
-  const z = maxMi > 340 ? 5.4 : maxMi > 260 ? 5.7 : 6;
-  map.setView([ORIGIN.lat, ORIGIN.lon], z, {animate:false});
+  map.setView([ORIGIN.lat, ORIGIN.lon], 5.7, {animate:false});
 }
 
 async function fetchT(url, ms){
