@@ -44,13 +44,19 @@
   .traffic-row{
     display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:8px;min-height:0;min-width:0;
   }
-  .map-wrap{position:relative;min-height:0;height:100%}
+  .map-wrap{position:relative;min-height:0;height:100%;overflow:hidden}
   #map{
     height:100%;min-height:0;
     border:2px solid #1e4a72;border-radius:6px;
     box-shadow:0 0 20px rgba(41,182,246,.16);
     background:#0a2033;
     position:relative;
+  }
+  #radarClock{
+    position:absolute;top:10px;right:10px;z-index:500;
+    background:rgba(11,28,48,.88);border:1px solid #1e4a72;border-radius:4px;
+    padding:4px 8px;font-size:11px;color:#eaf6ff;pointer-events:none;
+    font-family:Orbitron,sans-serif;letter-spacing:.04em;
   }
   #mapKey{
     position:absolute;left:10px;bottom:10px;z-index:500;
@@ -62,11 +68,6 @@
   #mapKey .rainscale{background:linear-gradient(90deg,#b3e5fc,#29b6f6,#00e676,#ffeb3b,#ff9800,#f44336,#9c27b0,#e1bee7)}
   #mapKey .snowscale{background:linear-gradient(90deg,#e3f2fd,#b3e5fc,#ffffff,#f8bbd0,#f48fb1)}
   #mapKey .ticks{display:flex;justify-content:space-between;font-size:9px;color:#9ab;margin-top:1px}
-    position:absolute;top:10px;right:10px;z-index:500;
-    background:rgba(11,28,48,.88);border:1px solid #1e4a72;border-radius:4px;
-    padding:4px 8px;font-size:11px;color:#eaf6ff;pointer-events:none;
-    font-family:Orbitron,sans-serif;letter-spacing:.04em;
-  }
   .leaflet-control-attribution{font-size:8px;background:rgba(7,18,31,.65);color:#9ab}
   .eta-col{
     display:flex;flex-direction:column;gap:5px;min-height:0;overflow:hidden;
@@ -285,11 +286,11 @@ function centerOnSLC(){
   map.panBy([0, 110], {animate:false});
 }
 
-async function fetchT(url, ms){
+async function fetchT(url, ms, headers){
   const ctrl = new AbortController();
   const t = setTimeout(()=>ctrl.abort(), ms||12000);
   try{
-    const res = await fetch(url, {signal:ctrl.signal, mode:'cors'});
+    const res = await fetch(url, {signal:ctrl.signal, mode:'cors', headers: headers||{}});
     clearTimeout(t);
     if(!res.ok) throw new Error('http '+res.status);
     return await res.json();
@@ -546,15 +547,84 @@ async function routes(){
 async function weather(){
   const cards = [];
   const wxPlaces = ALL.filter(p => p.name!=='Dubois, ID' && p.name!=='Burley, ID');
-  for(const p of wxPlaces){
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,precipitation,rain,snowfall,wind_speed_10m,wind_gusts_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,rain_sum,wind_speed_10m_max,wind_gusts_10m_max&temperature_unit=fahrenheit&precipitation_unit=inch&wind_speed_unit=mph&timezone=America/Denver&forecast_days=3`;
-    try{
-      cards.push({p, j: await fetchT(url, 12000)});
-    }catch(e){ cards.push({p, j:null}); }
+  const cached = loadWxCache();
+  if(cached && cached.length===wxPlaces.length){
+    paintWx(cached);
+    return;
   }
+  await Promise.all(wxPlaces.map(async p => {
+    const j = await nwsForecast(p);
+    const alert = await nwsAlert(p);
+    cards.push({p, j, alert});
+    paintWx(cards.slice());
+  }));
+  cards.sort((a,b)=>wxPlaces.findIndex(p=>p.name===a.p.name)-wxPlaces.findIndex(p=>p.name===b.p.name));
+  if(cards.some(c=>c.j)) saveWxCache(cards.map(c=>({name:c.p.name, j:c.j})));
+  paintWx(cards);
+}
+
+function loadWxCache(){
+  try{
+    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v2')||'null');
+    if(!j || Date.now()-j.ts > 30*60*1000) return null;
+    return j.cards;
+  }catch(e){ return null; }
+}
+function saveWxCache(cards){
+  try{ localStorage.setItem('slc-wx-cache-v2', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
+}
+function codeFromText(t){
+  t=(t||'').toLowerCase();
+  if(t.includes('thunder')) return 95;
+  if(t.includes('snow')) return 73;
+  if(t.includes('rain')||t.includes('shower')) return 63;
+  if(t.includes('fog')) return 45;
+  if(t.includes('cloud')) return 3;
+  if(t.includes('sun')||t.includes('clear')) return 0;
+  return 2;
+}
+async function nwsAlert(p){
+  try{
+    const j = await fetchT(`https://api.weather.gov/alerts/active?point=${p.lat.toFixed(4)},${p.lon.toFixed(4)}`, 8000, {Accept:'application/geo+json'});
+    const hit = (j.features||[]).find(f => /Severe Thunderstorm Warning|Tornado Warning|Winter Storm Warning|Blizzard Warning|Ice Storm Warning|High Wind Warning/i.test((f.properties&&f.properties.event)||''));
+    return hit ? hit.properties.event : null;
+  }catch(e){ return null; }
+}
+async function nwsForecast(p){
+  try{
+    const pt = await fetchT(`https://api.weather.gov/points/${p.lat.toFixed(4)},${p.lon.toFixed(4)}`, 8000, {Accept:'application/geo+json'});
+    const fc = await fetchT(pt.properties.forecast, 8000, {Accept:'application/geo+json'});
+    const periods = (fc.properties.periods||[]).slice(0,3);
+    const now = periods[0] || {};
+    return {
+      current:{
+        temperature_2m: now.temperature,
+        relative_humidity_2m: '—',
+        weather_code: codeFromText(now.shortForecast),
+        rain: 0,
+        snowfall: 0,
+        wind_speed_10m: now.windSpeed ? parseInt(now.windSpeed,10)||0 : 0,
+        wind_gusts_10m: 0
+      },
+      daily:{
+        time: periods.map(x=>x.startTime.slice(0,10)),
+        temperature_2m_max: periods.map(x=>x.temperature),
+        temperature_2m_min: periods.map(x=>x.temperature),
+        weather_code: periods.map(x=>codeFromText(x.shortForecast)),
+        precipitation_sum: periods.map(()=>0),
+        snowfall_sum: periods.map(()=>0),
+        wind_gusts_10m_max: periods.map(x=>x.windSpeed?parseInt(x.windSpeed,10)||0:0)
+      }
+    };
+  }catch(e){ return null; }
+}
+function paintWx(cards){
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  document.getElementById('wxGrid').innerHTML = cards.map(({p,j})=>{
-    if(!j) return `<div class="wx">
+  document.getElementById('wxGrid').innerHTML = cards.map(row=>{
+    const p = row.p || ALL.find(x=>x.name===row.name) || {name:row.name};
+    const j = row.j;
+    const alert = row.alert || null;
+    if(!j || !j.current || j.current.temperature_2m==null) return `<div class="wx">
       <div class="name">${p.name}<\/div>
       <div class="now"><div class="temp">—<small>°F<\/small><\/div><div class="meta">n/a<br>Humidity —%<br>Rain 0.00" · Snow 0.00"<\/div><\/div>
       <div class="windline">— mph · gust — · No advisory<\/div>
@@ -562,14 +632,15 @@ async function weather(){
     <\/div>`;
     const c=j.current, d=j.daily;
     let f='';
-    let severeDaily=false;
+    let stormNote = '';
     for(let i=0;i<3;i++){
+      if(!d.time || !d.time[i]){ f+=`<div><div class="d">—<\/div><div class="c">${precipIcon(2)}<\/div><\/div>`; continue; }
       const dt=new Date(d.time[i]+'T12:00:00');
       const snow = (d.snowfall_sum && d.snowfall_sum[i]>0);
       const rain = (d.precipitation_sum && d.precipitation_sum[i]>0 && !snow);
       const mark = snow ? '❄️' : rain ? '🌧️' : '';
       const code = d.weather_code[i];
-      if(code>=95 || code===82 || code===75 || code===77 || code===67 || code===86) severeDaily=true;
+      if(code>=95 || code===82) stormNote = 'Isolated storms';
       f+=`<div><div class="d">${days[dt.getDay()]} ${dt.getMonth()+1}/${dt.getDate()}<\/div>
           <div class="r">${Math.round(d.temperature_2m_min[i])}°/${Math.round(d.temperature_2m_max[i])}°<\/div>
           <div class="c">${precipIcon(code)}<\/div><\/div>`;
@@ -584,15 +655,15 @@ async function weather(){
     const localDay = (d.wind_gusts_10m_max&&d.wind_gusts_10m_max[0])||localGst;
     const spd = Math.round(rw ? Math.max(rw.spd, rw.daySpd, localSpd) : localSpd);
     const gst = Math.round(rw ? Math.max(rw.gst, rw.dayGst, localGst, localDay) : Math.max(localGst, localDay));
-    const rCode = rw && rw.code!=null ? rw.code : c.weather_code;
-    const severeWx = severeDaily || rCode>=95 || rCode===82 || rCode===75 || rCode===77 || rCode===67 || rCode===86 || (rw && rw.snow>=0.25);
-    const windWarn = spd>=40 || gst>=58;
-    const windAdv = spd>=31 || gst>=46;
-    let flash='', windLabel='No advisory';
-    if(windWarn && severeWx){ flash='flash-red'; windLabel='HIGH WIND + SEVERE WX'; }
-    else if(windWarn){ flash='flash-red'; windLabel='HIGH WIND WARNING'; }
-    else if(severeWx){ flash='flash-red'; windLabel='SEVERE WEATHER'; }
+    const official = alert || '';
+    const windWarn = /High Wind Warning/i.test(official);
+    const severeWx = /Severe Thunderstorm Warning|Tornado Warning|Winter Storm Warning|Blizzard Warning|Ice Storm Warning/i.test(official);
+    const windAdv = !windWarn && (spd>=31 || gst>=46);
+    let flash='', windLabel = stormNote || 'No advisory';
+    if(windWarn && severeWx){ flash='flash-red'; windLabel=official; }
+    else if(severeWx || windWarn){ flash='flash-red'; windLabel=official; }
     else if(windAdv){ flash='flash-yellow'; windLabel='WIND ADVISORY'; }
+    else if(stormNote){ windLabel = stormNote; }
     const scope = rw ? 'along route' : 'at city';
     return `<div class="wx ${flash}">
       <div class="name">${precipIcon(c.weather_code)} ${p.name}<\/div>
@@ -691,9 +762,11 @@ async function loadJoke(){
 
 async function refreshAll(){
   document.getElementById('status').textContent = ' Updating…';
-  try{ await routes(); }catch(e){ paintFallbackTimes(); }
+  try{ await Promise.all([
+    routes().catch(()=>paintFallbackTimes()),
+    weather().catch(()=>{}),
+  ]); }catch(e){}
   try{ await loadRouteWinds(); }catch(e){}
-  try{ await weather(); }catch(e){}
   try{ await loadRadar(); }catch(e){}
   try{ await loadJoke(); }catch(e){}
   const when = new Date().toLocaleString('en-US',{
