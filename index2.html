@@ -286,11 +286,11 @@ function centerOnSLC(){
   map.panBy([0, 110], {animate:false});
 }
 
-async function fetchT(url, ms){
+async function fetchT(url, ms, headers){
   const ctrl = new AbortController();
   const t = setTimeout(()=>ctrl.abort(), ms||12000);
   try{
-    const res = await fetch(url, {signal:ctrl.signal, mode:'cors'});
+    const res = await fetch(url, {signal:ctrl.signal, mode:'cors', headers: headers||{}});
     clearTimeout(t);
     if(!res.ok) throw new Error('http '+res.status);
     return await res.json();
@@ -553,12 +553,10 @@ async function weather(){
     return;
   }
   await Promise.all(wxPlaces.map(async p => {
-    let j = null;
-    try{ j = await fetchT(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,precipitation,rain,snowfall,wind_speed_10m,wind_gusts_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,rain_sum,wind_speed_10m_max,wind_gusts_10m_max&temperature_unit=fahrenheit&precipitation_unit=inch&wind_speed_unit=mph&timezone=America/Denver&forecast_days=3`, 10000); }
-    catch(e){}
-    if(!j || !j.current) j = await nwsForecast(p);
+    const j = await nwsForecast(p);
     const alert = await nwsAlert(p);
     cards.push({p, j, alert});
+    paintWx(cards.slice());
   }));
   cards.sort((a,b)=>wxPlaces.findIndex(p=>p.name===a.p.name)-wxPlaces.findIndex(p=>p.name===b.p.name));
   if(cards.some(c=>c.j)) saveWxCache(cards.map(c=>({name:c.p.name, j:c.j})));
@@ -567,13 +565,13 @@ async function weather(){
 
 function loadWxCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wx-cache')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v2')||'null');
     if(!j || Date.now()-j.ts > 30*60*1000) return null;
     return j.cards;
   }catch(e){ return null; }
 }
 function saveWxCache(cards){
-  try{ localStorage.setItem('slc-wx-cache', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
+  try{ localStorage.setItem('slc-wx-cache-v2', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
 }
 function codeFromText(t){
   t=(t||'').toLowerCase();
@@ -585,28 +583,28 @@ function codeFromText(t){
   if(t.includes('sun')||t.includes('clear')) return 0;
   return 2;
 }
+async function nwsAlert(p){
+  try{
+    const j = await fetchT(`https://api.weather.gov/alerts/active?point=${p.lat.toFixed(4)},${p.lon.toFixed(4)}`, 8000, {Accept:'application/geo+json'});
+    const hit = (j.features||[]).find(f => /Severe Thunderstorm Warning|Tornado Warning|Winter Storm Warning|Blizzard Warning|Ice Storm Warning|High Wind Warning/i.test((f.properties&&f.properties.event)||''));
+    return hit ? hit.properties.event : null;
+  }catch(e){ return null; }
+}
 async function nwsForecast(p){
   try{
-    const pt = await fetchT(`https://api.weather.gov/points/${p.lat.toFixed(4)},${p.lon.toFixed(4)}`, 12000);
-    const obsUrl = pt.properties.observationStations;
-    const fcUrl = pt.properties.forecast;
-    const stations = await fetchT(obsUrl, 12000);
-    const sid = stations.features && stations.features[0] && stations.features[0].properties.stationIdentifier;
-    const obs = sid ? await fetchT(`https://api.weather.gov/stations/${sid}/observations/latest`, 12000) : null;
-    const fc = await fetchT(fcUrl, 12000);
-    const o = (obs && obs.properties) || {};
-    const cToF = v => v==null ? null : Math.round(v*9/5+32);
-    const periods = (fc.properties.periods||[]).filter(x=>x.isDaytime).slice(0,3);
-    const text = o.textDescription || (periods[0]&&periods[0].shortForecast) || '';
+    const pt = await fetchT(`https://api.weather.gov/points/${p.lat.toFixed(4)},${p.lon.toFixed(4)}`, 8000, {Accept:'application/geo+json'});
+    const fc = await fetchT(pt.properties.forecast, 8000, {Accept:'application/geo+json'});
+    const periods = (fc.properties.periods||[]).slice(0,3);
+    const now = periods[0] || {};
     return {
       current:{
-        temperature_2m: cToF(o.temperature && o.temperature.value),
-        relative_humidity_2m: o.relativeHumidity && o.relativeHumidity.value!=null ? Math.round(o.relativeHumidity.value) : '—',
-        weather_code: codeFromText(text),
+        temperature_2m: now.temperature,
+        relative_humidity_2m: '—',
+        weather_code: codeFromText(now.shortForecast),
         rain: 0,
         snowfall: 0,
-        wind_speed_10m: o.windSpeed && o.windSpeed.value!=null ? Math.round(o.windSpeed.value*0.621371) : 0,
-        wind_gusts_10m: o.windGust && o.windGust.value!=null ? Math.round(o.windGust.value*0.621371) : 0
+        wind_speed_10m: now.windSpeed ? parseInt(now.windSpeed,10)||0 : 0,
+        wind_gusts_10m: 0
       },
       daily:{
         time: periods.map(x=>x.startTime.slice(0,10)),
@@ -636,6 +634,7 @@ function paintWx(cards){
     let f='';
     let stormNote = '';
     for(let i=0;i<3;i++){
+      if(!d.time || !d.time[i]){ f+=`<div><div class="d">—<\/div><div class="c">${precipIcon(2)}<\/div><\/div>`; continue; }
       const dt=new Date(d.time[i]+'T12:00:00');
       const snow = (d.snowfall_sum && d.snowfall_sum[i]>0);
       const rain = (d.precipitation_sum && d.precipitation_sum[i]>0 && !snow);
@@ -763,9 +762,11 @@ async function loadJoke(){
 
 async function refreshAll(){
   document.getElementById('status').textContent = ' Updating…';
-  try{ await routes(); }catch(e){ paintFallbackTimes(); }
+  try{ await Promise.all([
+    routes().catch(()=>paintFallbackTimes()),
+    weather().catch(()=>{}),
+  ]); }catch(e){}
   try{ await loadRouteWinds(); }catch(e){}
-  try{ await weather(); }catch(e){}
   try{ await loadRadar(); }catch(e){}
   try{ await loadJoke(); }catch(e){}
   const when = new Date().toLocaleString('en-US',{
