@@ -52,7 +52,16 @@
     background:#0a2033;
     position:relative;
   }
-  #radarClock{
+  #mapKey{
+    position:absolute;left:10px;bottom:10px;z-index:500;
+    background:rgba(11,28,48,.9);border:1px solid #1e4a72;border-radius:4px;
+    padding:6px 8px;font-size:10px;color:#eaf6ff;pointer-events:none;line-height:1.4;
+  }
+  #mapKey .row{display:flex;align-items:center;gap:6px;margin:3px 0}
+  #mapKey .scale{width:168px;height:10px;border-radius:2px;display:block}
+  #mapKey .rainscale{background:linear-gradient(90deg,#b3e5fc,#29b6f6,#00e676,#ffeb3b,#ff9800,#f44336,#9c27b0,#e1bee7)}
+  #mapKey .snowscale{background:linear-gradient(90deg,#e3f2fd,#b3e5fc,#ffffff,#f8bbd0,#f48fb1)}
+  #mapKey .ticks{display:flex;justify-content:space-between;font-size:9px;color:#9ab;margin-top:1px}
     position:absolute;top:10px;right:10px;z-index:500;
     background:rgba(11,28,48,.88);border:1px solid #1e4a72;border-radius:4px;
     padding:4px 8px;font-size:11px;color:#eaf6ff;pointer-events:none;
@@ -197,6 +206,14 @@
     <div class="map-wrap">
       <div id="map"></div>
       <div id="radarClock">Radar loop —</div>
+      <div id="mapKey">
+        <div class="row"><b>Rain</b></div>
+        <span class="scale rainscale"></span>
+        <div class="ticks"><span>drizzle</span><span>moderate</span><span>heavy</span><span>extreme</span></div>
+        <div class="row" style="margin-top:6px"><b>Snow</b></div>
+        <span class="scale snowscale"></span>
+        <div class="ticks"><span>light</span><span>moderate</span><span>heavy</span></div>
+      </div>
     </div>
     <div class="eta-wrap">
       <div class="eta-col" id="etaCol">Loading drive times…</div>
