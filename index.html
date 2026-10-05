@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <title>Current Traffic &amp; Weather — SLC Hub</title>
@@ -15,18 +15,17 @@
     --ice:#4fc3f7; --txt:#eaf6ff; --dim:#8aa4bb; --hot:#ff8a65;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;overflow:hidden;background:#050b14;color:var(--txt);font-family:Roboto,system-ui,sans-serif}
+  html,body{height:100%;overflow:hidden;background:#050b14;color:var(--txt);font-family:Roboto,system-ui,sans-serif;touch-action:manipulation}
   body{
     height:100vh;
     background:linear-gradient(#07121f,#050b14);
   }
   .board{
-    height:100vh;width:100%;
+    height:100vh;width:100%;max-width:100vw;overflow:hidden;
     display:grid;
     grid-template-rows:1fr auto auto;
     padding:6px 10px 6px;
     gap:4px;
-    max-width:100%;
   }
   .mast{
     display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -40,10 +39,10 @@
   .mast-right{text-align:right;font-size:12px;color:var(--dim);line-height:1.35}
   .mast-right b{color:#fff}
   #clock{font-family:Orbitron,sans-serif;color:#fff;letter-spacing:.03em;font-size:11px;text-align:right;line-height:1.2}
-  .eta-wrap{display:flex;flex-direction:column;gap:5px;min-height:0}
+  .eta-wrap{display:flex;flex-direction:column;gap:5px;min-height:0;min-width:0;overflow:hidden}
   .eta-head{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
   .traffic-row{
-    display:grid;grid-template-columns:1fr 280px;gap:8px;min-height:0;
+    display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:8px;min-height:0;min-width:0;
   }
   .map-wrap{position:relative;min-height:0;height:100%}
   #map{
@@ -75,7 +74,8 @@
   .eta .n{font-family:Orbitron,sans-serif;color:var(--ice);font-size:13px}
   .eta h3{font-size:12px;font-weight:700;line-height:1.15}
   .eta .via{font-size:10px;color:var(--dim)}
-  .eta .t{font-family:Orbitron,sans-serif;font-size:14px;text-align:right;white-space:nowrap}
+  .eta .t{font-family:Orbitron,sans-serif;font-size:13px;text-align:right;white-space:nowrap;line-height:1.15}
+  .eta .ret{font-size:10px;color:var(--dim);text-align:right;white-space:nowrap}
   .eta.closed{background:#2a1212}
   .eta .closed-tag{color:#ef9a9a;font-weight:800;font-size:10px;letter-spacing:.06em}
   #joke{
@@ -84,9 +84,10 @@
     max-height:90px;overflow:auto;
   }
   #joke .jh{font-size:9px;letter-spacing:.08em;color:var(--ice);font-family:Orbitron,sans-serif;margin-bottom:3px}
+  #joke .jsrc{color:var(--dim);letter-spacing:0;font-family:Roboto,sans-serif;font-size:9px;margin-left:6px}
   #joke .jp{color:var(--dim);margin-top:3px}
   .eta .mi{font-size:10px;color:var(--dim);text-align:right}
-  .wx-wrap{min-height:0}
+  .wx-wrap{min-height:0;min-width:0;overflow:hidden}
   .sec{
     font-family:Orbitron,sans-serif;font-weight:800;letter-spacing:.14em;
     font-size:clamp(14px,1.8vw,22px);color:#fff;text-align:left;
@@ -136,11 +137,11 @@
   .map-key h4{font-family:Orbitron,sans-serif;font-size:9px;letter-spacing:.08em;color:#4fc3f7;margin-bottom:4px}
   .map-key .row{display:flex;align-items:center;gap:6px;margin:3px 0}
   .wx-grid{
-    display:grid;grid-template-columns:repeat(9,1fr);gap:6px;
+    display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:6px;min-width:0;
   }
   .wx{
     background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 7px 6px;
-    height:100%;display:flex;flex-direction:column;
+    height:100%;display:flex;flex-direction:column;min-width:0;overflow:hidden;
   }
   .wx .name{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:16px;line-height:16px}
   .wx .now{display:flex;align-items:flex-start;gap:6px;margin:2px 0 2px;height:40px}
@@ -186,8 +187,7 @@
   }
   @media (max-width:1200px){
     .traffic-row{grid-template-columns:1fr 230px}
-    .wx-grid{grid-template-columns:repeat(4,1fr)}
-    html,body{overflow:auto}
+    .wx-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
   }
 </style>
 </head>
@@ -199,12 +199,8 @@
       <div id="radarClock">Radar loop —</div>
     </div>
     <div class="eta-wrap">
-      <div class="eta-head">
-        <h2 class="eta-col" style="margin:0;flex:0">DRIVE TIMES</h2>
-        <div id="clock">—</div>
-      </div>
       <div class="eta-col" id="etaCol">Loading drive times…</div>
-      <div id="joke"><div class="jh">DAILY JOKE</div><div id="jokeText">…</div></div>
+      <div id="joke"><div class="jh">DAILY JOKE <span class="jsrc" id="jokeSrc"></span></div><div id="jokeText">…</div></div>
     </div>
   </div>
 
@@ -213,17 +209,25 @@
   </div>
   <footer>
     <span class="credit">Created By Austin Platt</span>
+    <span id="clock">—</span>
     <span id="status"></span>
   </footer>
 </div>
 
 <script>
+document.addEventListener('wheel', function(e){ if(e.ctrlKey) e.preventDefault(); }, {passive:false});
+document.addEventListener('gesturestart', function(e){ e.preventDefault(); });
+document.addEventListener('keydown', function(e){
+  if((e.ctrlKey || e.metaKey) && (e.key==='+' || e.key==='-' || e.key==='=' || e.key==='0')) e.preventDefault();
+});
 const ORIGIN = { name:'Salt Lake City, UT', lat:40.7539165, lon:-112.0440868 };
 
 const DEST = [
   { name:'Dove Creek, CO',   lat:37.7638, lon:-108.9057, color:'#42a5f5', via:'US-6 / US-191', fallback:{duration:22863, distance:512205} },
   { name:'Dubois, ID',       lat:44.176298, lon:-112.230820, color:'#66bb6a', via:'I-15 N', fallback:{duration:15912, distance:429663} },
+  { name:'Lima, MT',         lat:44.6369, lon:-112.5919, color:'#81c784', via:'I-15 N', fallback:{duration:19240, distance:498900} },
   { name:'Mountain Home, ID', lat:43.1329, lon:-115.6912, color:'#9ccc65', via:'I-84 W', fallback:{duration:18058, distance:487293} },
+  { name:'Burley, ID',       lat:42.5358, lon:-113.7928, color:'#aed581', via:'I-84 W', fallback:{duration:10924, distance:283000} },
   { name:'Carlin, NV',       lat:40.713059, lon:-116.107088, color:'#ffa726', via:'I-80 W', fallback:{duration:14508, distance:395846} },
   { name:'St. George, UT',   lat:37.109877, lon:-113.583206, color:'#ff7043', via:'I-15 S', fallback:{duration:18756, distance:494000} },
   { name:'Beaver, UT',       lat:38.276900, lon:-112.641100, color:'#26c6da', via:'I-15 S', fallback:{duration:12816, distance:328309} },
@@ -245,17 +249,23 @@ function initMap(){
     return false;
   }
   map = L.map('map', {
-    zoomControl:true, attributionControl:false,
-    dragging:true, touchZoom:true, scrollWheelZoom:true,
-    doubleClickZoom:true, boxZoom:true, keyboard:true
+    zoomControl:false, attributionControl:false,
+    dragging:false, touchZoom:false, scrollWheelZoom:false,
+    doubleClickZoom:false, boxZoom:false, keyboard:false
   });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom:18, attribution:'OSM'
   }).addTo(map);
-  FRAME = destBounds();
-  map.fitBounds(FRAME, {animate:false, padding:[18,18]});
-  setTimeout(()=>{ try{ map.invalidateSize(); map.fitBounds(FRAME,{padding:[18,18]}); }catch(e){} }, 400);
+  centerOnSLC();
+  setTimeout(()=>{ try{ map.invalidateSize(); centerOnSLC(); }catch(e){} }, 400);
   return true;
+}
+
+function centerOnSLC(){
+  if(!map) return;
+  map.invalidateSize();
+  map.setView([ORIGIN.lat, ORIGIN.lon], 5.7, {animate:false});
+  map.panBy([0, 110], {animate:false});
 }
 
 async function fetchT(url, ms){
@@ -402,39 +412,65 @@ async function loadRouteWinds(){
   }));
 }
 
-async function osrmDrive(d){
-  const url = `https://router.project-osrm.org/route/v1/driving/${ORIGIN.lon},${ORIGIN.lat};${d.lon},${d.lat}?overview=false`;
+const CORRIDORS = [
+  ['Beaver, UT', 'St. George, UT'],
+  ['Rock Springs, WY', 'Rawlins, WY'],
+  ['Dove Creek, CO'],
+  ['Dubois, ID', 'Lima, MT'],
+  ['Burley, ID', 'Mountain Home, ID'],
+  ['Carlin, NV']
+];
+
+async function osrmCorridor(names){
+  const stops = names.map(n => DEST.find(d => d.name===n)).filter(Boolean);
+  const coords = [ORIGIN, ...stops].map(p => p.lon+','+p.lat).join(';');
+  const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=false`;
   for(let attempt=0; attempt<3; attempt++){
     try{
       const j = await fetchT(url, 12000);
-      if(j.code==='Ok' && j.routes && j.routes[0]){
-        return {duration:j.routes[0].duration, distance:j.routes[0].distance, ok:true};
+      if(j.code==='Ok' && j.routes && j.routes[0] && j.routes[0].legs){
+        const legs = j.routes[0].legs;
+        let dist=0, dur=0;
+        const out = {};
+        stops.forEach((s,i)=>{
+          dist += legs[i].distance||0;
+          dur += legs[i].duration||0;
+          out[s.name] = {duration:dur, distance:dist, closed:false};
+        });
+        return out;
       }
-      if(j.code==='NoRoute') return {duration:null, distance:null, ok:false, closed:true};
+      if(j.code==='NoRoute'){
+        const out = {};
+        stops.forEach(s => { out[s.name] = {duration:null, distance:null, closed:true}; });
+        return out;
+      }
     }catch(e){}
     await new Promise(r=>setTimeout(r, 400*(attempt+1)));
   }
-  const fb = d.fallback || {duration:null, distance:null};
-  return {...fb, ok:false};
+  const out = {};
+  stops.forEach(s => { out[s.name] = {duration:s.fallback.duration, distance:s.fallback.distance, closed:false}; });
+  return out;
 }
 
 function applyLiveTime(d, r){
   const fb = d.fallback || {};
   const wx = ROUTE_WIND[d.name] || {};
-  const baseDur = (r.duration!=null ? r.duration : fb.duration);
   const baseDist = (r.distance!=null ? r.distance : fb.distance);
+  const miles = baseDist!=null ? baseDist/1609.34 : null;
+  const baseline = miles!=null ? Math.round((miles/58)*3600) : null;
   let factor = 1;
   const notes = [];
   if((wx.snow||0) >= 0.05 || (wx.code>=71 && wx.code<=86)){ factor += 0.35; notes.push('snow'); }
   else if((wx.rain||0) >= 0.05 || (wx.code>=51 && wx.code<=67) || (wx.code>=80 && wx.code<=82)){ factor += 0.15; notes.push('rain'); }
   if((wx.gst||0) >= 58 || (wx.dayGst||0) >= 58){ factor += 0.20; notes.push('high wind'); }
   else if((wx.gst||0) >= 46 || (wx.dayGst||0) >= 46){ factor += 0.12; notes.push('wind'); }
-  const liveDur = baseDur!=null ? Math.round(baseDur * factor) : null;
-  const extra = (fb.duration && liveDur!=null) ? (liveDur - fb.duration) : 0;
+  const liveDur = baseline!=null ? Math.round(baseline * factor) : null;
+  const extra = (baseline && liveDur!=null) ? (liveDur - baseline) : 0;
   const delayed = extra >= 3*3600;
   const closed = !!r.closed;
   return {
     duration: liveDur,
+    returnDur: liveDur!=null ? liveDur : null,
     distance: baseDist,
     closed,
     delayed,
@@ -442,14 +478,38 @@ function applyLiveTime(d, r){
   };
 }
 
+const ROUTE_REFRESH_MS = 2*60*60*1000;
+function loadRouteCache(){
+  try{
+    const j = JSON.parse(localStorage.getItem('slc-route-cache-v3')||'null');
+    if(j && j.ts && (Date.now()-j.ts) < ROUTE_REFRESH_MS && j.rows) return j.rows;
+  }catch(e){}
+  return null;
+}
+function saveRouteCache(rows){
+  try{ localStorage.setItem('slc-route-cache-v3', JSON.stringify({ts:Date.now(), rows})); }catch(e){}
+}
+
 async function routes(){
+  const cached = loadRouteCache();
   const out = [];
+  const rows = cached ? cached.slice() : [];
   for(let i=0;i<DEST.length;i++){
     const d = DEST[i];
-    const r = applyLiveTime(d, await osrmDrive(d));
-    out.push({...d, i:i+1, duration:r.duration, distance:r.distance, closed:r.closed, delayed:r.delayed, note:r.note});
+    let raw = cached && cached[i] ? cached[i] : null;
+    if(!raw){
+      const live = await osrmCorridor(CORRIDORS.find(c => c.includes(d.name)) || [d.name]);
+      Object.keys(live).forEach(name => {
+        const idx = DEST.findIndex(x => x.name===name);
+        if(idx>=0) rows[idx] = live[name];
+      });
+      raw = rows[i];
+    }
+    const r = applyLiveTime(d, raw);
+    out.push({...d, i:i+1, duration:r.duration, returnDur:r.returnDur, distance:r.distance, closed:r.closed, delayed:r.delayed, note:r.note});
   }
-  if(map && FRAME) map.fitBounds(FRAME, {animate:false, padding:[18,18]});
+  if(!cached) saveRouteCache(rows);
+  if(map) centerOnSLC();
 
   document.getElementById('etaCol').innerHTML = out.map(r=>`
     <div class="eta ${r.closed?'closed':(r.delayed?'alert':'')}" style="border-left-color:${r.closed?'#ef5350':r.color}">
@@ -459,15 +519,17 @@ async function routes(){
         <div class="via">${r.closed ? '<span class="closed-tag">Road Closed?<\/span>' : r.delayed ? '<span class="closed-tag">Check route for issues<\/span>' : r.note}<\/div>
       <\/div>
       <div>
-        <div class="t">${r.closed ? 'Road Closed?' : (r.duration!=null?fmtTime(r.duration):'n/a')}<\/div>
-        <div class="mi">${r.delayed && !r.closed ? '3+ hr over typical' : (r.distance!=null?fmtMi(r.distance):'')}<\/div>
+        <div class="t">${r.closed ? 'Road Closed?' : (r.duration!=null?fmtTime(r.duration):'n/a')}</div>
+        <div class="ret">${r.closed ? '' : (r.returnDur!=null?('return '+fmtTime(r.returnDur)):'')}</div>
+        <div class="mi">${r.delayed && !r.closed ? '3+ hr over 58 mph' : (r.distance!=null?fmtMi(r.distance):'')}<\/div>
       <\/div>
     <\/div>`).join('');
 }
 
 async function weather(){
   const cards = [];
-  for(const p of ALL){
+  const wxPlaces = ALL.filter(p => p.name!=='Dubois, ID' && p.name!=='Burley, ID');
+  for(const p of wxPlaces){
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,precipitation,rain,snowfall,wind_speed_10m,wind_gusts_10m,wind_direction_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,snowfall_sum,rain_sum,wind_speed_10m_max,wind_gusts_10m_max&temperature_unit=fahrenheit&precipitation_unit=inch&wind_speed_unit=mph&timezone=America/Denver&forecast_days=3`;
     try{
       cards.push({p, j: await fetchT(url, 12000)});
@@ -546,6 +608,7 @@ function paintFallbackTimes(){
       <div><h3>${d.name}<\/h3><div class="via">${d.via}<\/div><\/div>
       <div>
         <div class="t">${r.duration!=null?fmtTime(r.duration):'n/a'}<\/div>
+        <div class="ret">${r.returnDur!=null?('return '+fmtTime(r.returnDur)):''}<\/div>
         <div class="mi">${r.distance!=null?fmtMi(r.distance):''}<\/div>
       <\/div>
     <\/div>`;
@@ -555,8 +618,10 @@ function paintFallbackTimes(){
 function todayKey(){
   return new Date().toLocaleDateString('en-CA',{timeZone:'America/Denver'});
 }
-function showJoke(setup, punch){
+function showJoke(setup, punch, src){
   const el = document.getElementById('jokeText');
+  const s = document.getElementById('jokeSrc');
+  if(s) s.textContent = src ? '— '+src : '';
   if(!el) return;
   el.innerHTML = punch ? setup+'<div class="jp">'+punch+'</div>' : setup;
 }
@@ -588,12 +653,12 @@ function jokeIsClean(text){
 async function pullDadJoke(){
   try{
     const j = await fetchJokeJson('https://icanhazdadjoke.com/', {Accept:'application/json'});
-    if(j && j.joke) return {setup:j.joke, punch:''};
+    if(j && j.joke) return {setup:j.joke, punch:'', src:'icanhazdadjoke.com'};
   }catch(e){}
   try{
     const j = await fetchJokeJson('https://official-joke-api.appspot.com/jokes/dad/random');
     const row = Array.isArray(j) ? j[0] : j;
-    if(row && row.setup) return {setup:row.setup, punch:row.punchline||''};
+    if(row && row.setup) return {setup:row.setup, punch:row.punchline||'', src:'official-joke-api.appspot.com'};
   }catch(e){}
   return null;
 }
@@ -602,9 +667,9 @@ async function loadJoke(){
     const j = await pullDadJoke();
     if(!j || !j.setup) continue;
     const full = j.setup+' '+ (j.punch||'');
-    if(jokeIsClean(full)){ showJoke(j.setup, j.punch); return; }
+    if(jokeIsClean(full)){ showJoke(j.setup, j.punch, j.src); return; }
   }
-  showJoke('Why did the scarecrow get promoted? He was outstanding in his field.','');
+  showJoke('Why did the scarecrow get promoted? He was outstanding in his field.','','on board');
 }
 
 async function refreshAll(){
