@@ -283,7 +283,7 @@ function centerOnSLC(){
   if(!map) return;
   map.invalidateSize();
   map.setView([ORIGIN.lat, ORIGIN.lon], 5.7, {animate:false});
-  map.panBy([0, 110], {animate:false});
+  map.panBy([0, 20], {animate:false});
 }
 
 async function fetchT(url, ms, headers){
