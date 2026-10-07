@@ -566,7 +566,7 @@ async function weather(){
 function loadWxCache(){
   try{
     const j = JSON.parse(localStorage.getItem('slc-wx-cache-v2')||'null');
-    if(!j || Date.now()-j.ts > 30*60*1000) return null;
+    if(!j || Date.now()-j.ts > 60*60*1000) return null;
     return j.cards;
   }catch(e){ return null; }
 }
@@ -781,8 +781,8 @@ async function refreshAll(){
   }
   paintFallbackTimes();
   await refreshAll();
-  setInterval(refreshAll, 5*60*1000);
-  setInterval(function(){ location.reload(); }, 10*60*1000);
+  setInterval(refreshAll, 15*60*1000);
+  setInterval(function(){ location.reload(); }, 15*60*1000);
 })();
 </script>
 </body>
