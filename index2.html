@@ -673,13 +673,13 @@ async function weather(){
 
 function loadWxCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v7')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v8')||'null');
     if(!j || Date.now()-j.ts > 60*60*1000) return null;
     return j.cards;
   }catch(e){ return null; }
 }
 function saveWxCache(cards){
-  try{ localStorage.setItem('slc-wx-cache-v7', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
+  try{ localStorage.setItem('slc-wx-cache-v8', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
 }
 function codeFromText(t){
   t=(t||'').toLowerCase();
@@ -705,12 +705,13 @@ async function nwsForecast(p){
     const periods = (fc.properties.periods||[]).slice(0,3);
     const now = periods[0] || {};
     const spd = now.windSpeed ? Math.max(...(String(now.windSpeed).match(/\d+/g)||['0']).map(Number)) : 0;
-    let gst = spd;
+    let gst = spd, dir = 0;
     try{
       const grid = pt.properties.forecastGridData ? await fetchT(pt.properties.forecastGridData, 8000, {Accept:'application/geo+json'}) : null;
       const g = (grid && grid.properties) || {};
       const gspd = Math.round(toMph(firstGrid(g.windSpeed), g.windSpeed && g.windSpeed.uom));
       const ggst = Math.round(toMph(firstGrid(g.windGust) || firstGrid(g.windSpeed), (g.windGust&&g.windGust.uom) || (g.windSpeed&&g.windSpeed.uom)));
+      dir = Math.round(firstGrid(g.windDirection) || 0);
       if(ggst) gst = Math.max(gst, ggst);
     }catch(e){}
     const gmatch = String(now.detailedForecast||'').match(/gusts?(?: as high as| up to| to)?\s*(\d+)/i);
@@ -723,7 +724,8 @@ async function nwsForecast(p){
         rain: 0,
         snowfall: 0,
         wind_speed_10m: spd,
-        wind_gusts_10m: gst
+        wind_gusts_10m: gst,
+        wind_direction_10m: dir
       },
       daily:{
         time: periods.map(x=>x.startTime.slice(0,10)),
@@ -943,23 +945,13 @@ function windArrowIcon(mph, dir){
 }
 async function loadWindArrows(){
   if(!map || typeof L === 'undefined') return;
-  try{
-    const cached = JSON.parse(localStorage.getItem('slc-wind-arrows-v2')||'null');
-    if(cached && cached.rows && cached.rows.length && Date.now()-cached.ts < 60*60*1000){ paintWindArrows(cached.rows); return; }
-  }catch(e){}
-  const rows = [];
-  for(const p of ALL){
-    try{
-      const j = await fetchT(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=mph`, 8000);
-      const c = j.current || {};
-      if(c.wind_speed_10m!=null) rows.push({lat:p.lat, lon:p.lon, spd:Math.round(c.wind_speed_10m||0), gst:Math.round(c.wind_gusts_10m||0), dir:c.wind_direction_10m||0, name:p.name});
-    }catch(e){}
-    await new Promise(r=>setTimeout(r, 400));
-  }
-  if(rows.length){
-    try{ localStorage.setItem('slc-wind-arrows-v2', JSON.stringify({ts:Date.now(), rows})); }catch(e){}
-    paintWindArrows(rows);
-  }
+  const rows = (LAST_WX||[]).map(row=>{
+    const p = row.p || ALL.find(x=>x.name===row.name);
+    const c = row.j && row.j.current;
+    if(!p || !c) return null;
+    return {lat:p.lat, lon:p.lon, spd:Math.round(c.wind_speed_10m||0), gst:Math.round(c.wind_gusts_10m||0), dir:c.wind_direction_10m||0, name:p.name};
+  }).filter(Boolean);
+  if(rows.length) paintWindArrows(rows);
 }
 function paintWindArrows(rows){
   if(!map || !rows) return;
