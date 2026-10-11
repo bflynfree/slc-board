@@ -193,7 +193,8 @@
   .hot{color:var(--hot)}
   footer{display:flex;align-items:center;justify-content:center;gap:14px;color:var(--dim);font-size:11px;line-height:1.2;padding:2px 0}
   footer .credit{color:var(--dim);letter-spacing:0;font-family:inherit;font-size:11px;font-weight:400;text-shadow:none}
-  footer .flash-key{color:var(--dim)}
+  footer .flash-key{color:var(--dim);display:none}
+  footer .flash-key.show{display:inline}
   footer .flash-key .y{color:#ffcc80}
   footer .flash-key .r{color:#ef9a9a}
   .badge-time{
@@ -243,7 +244,7 @@
     <span class="credit">Created By Austin Platt</span>
     <span id="clock">—</span>
     <span id="status"></span>
-    <span class="flash-key"><span class="r">LCV Not Allowed = wind over 45, snow/ice, or vis under 1000 ft</span> · <span class="y">Caution = National Weather Service Warning</span></span>
+    <span class="flash-key" id="flashKey"><span class="r">LCV Not Allowed = wind over 45, snow/ice, or vis under 1000 ft</span> · <span class="y">Caution = National Weather Service Warning</span></span>
   </footer>
 </div>
 
@@ -425,13 +426,36 @@ async function windAt(lat, lon){
   }catch(e){}
   const fc = await fetchT(pt.properties.forecast, 8000, {Accept:'application/geo+json'});
   const now = (fc.properties.periods||[])[0] || {};
-  const nums = String(now.windSpeed||'').match(/\d+/g) || ['0'];
-  const spd = Math.max(...nums.map(Number));
+    const nums = String(now.windSpeed||'').match(/\d+/g) || ['0'];
+    const spd = Math.max(...nums.map(Number));
+    const gustText = String(now.detailedForecast||'') + ' ' + String(now.shortForecast||'');
+    const gmatch = gustText.match(/gusts?(?: as high as| up to| to)?\s*(\d+)/i);
+    const gst = gmatch ? Number(gmatch[1]) : spd;
   const snow = /snow|ice|sleet|freezing|wintry/i.test(now.shortForecast||'');
-  return {spd, gst: spd, daySpd: spd, dayGst: spd, rain:0, snow: snow?0.1:0, ice:0, vis:99999, precip:0, code: snow?73:codeFromText(now.shortForecast), loc};
+  return {spd, gst, daySpd: spd, dayGst: gst, rain:0, snow: snow?0.1:0, ice:0, vis:99999, precip:0, code: snow?73:codeFromText(now.shortForecast), loc};
 }
 
 let LAST_WX = [];
+function blankWind(){
+  return {spd:0,gst:0,daySpd:0,dayGst:0,rain:0,snow:0,ice:0,vis:99999,precip:0,code:0,windLoc:'',snowLoc:'',visLoc:''};
+}
+function foldWind(list){
+  return list.reduce((m,w)=>({
+    spd: Math.max(m.spd, w.spd||0),
+    gst: Math.max(m.gst, w.gst||0),
+    daySpd: Math.max(m.daySpd, w.daySpd||0),
+    dayGst: Math.max(m.dayGst, w.dayGst||0),
+    rain: Math.max(m.rain, w.rain||0),
+    snow: Math.max(m.snow, w.snow||0),
+    ice: Math.max(m.ice||0, w.ice||0),
+    vis: Math.min(m.vis==null?99999:m.vis, w.vis==null?99999:w.vis),
+    precip: Math.max(m.precip, w.precip||0),
+    code: Math.max(m.code, w.code||0),
+    windLoc: (Math.max(w.spd||0,w.gst||0) >= Math.max(m.spd,m.gst)) ? (w.loc||m.windLoc) : m.windLoc,
+    snowLoc: ((w.snow||0)+(w.ice||0) >= (m.snow||0)+(m.ice||0)) ? (w.loc||m.snowLoc) : m.snowLoc,
+    visLoc: ((w.vis==null?99999:w.vis) <= (m.vis==null?99999:m.vis)) ? (w.loc||m.visLoc) : m.visLoc
+  }), blankWind());
+}
 async function loadRouteWinds(){
   const cached = loadWindCache();
   if(cached){
@@ -439,47 +463,41 @@ async function loadRouteWinds(){
     if(LAST_WX.length) paintWx(LAST_WX);
     return;
   }
-  await Promise.all(DEST.map(async d=>{
+  for(const names of CORRIDORS){
+    const stops = names.map(n => DEST.find(d => d.name===n)).filter(Boolean);
+    if(!stops.length) continue;
     try{
-      const url = `https://router.project-osrm.org/route/v1/driving/${ORIGIN.lon},${ORIGIN.lat};${d.lon},${d.lat}?overview=simplified&geometries=geojson`;
-      const j = await fetchT(url, 12000);
+      const chain = [ORIGIN, ...stops].map(p => p.lon+','+p.lat).join(';');
+      const j = await fetchT(`https://router.project-osrm.org/route/v1/driving/${chain}?overview=simplified&geometries=geojson`, 12000);
       const coords = (j.routes && j.routes[0] && j.routes[0].geometry.coordinates)||[];
-      const pts = sampleCoords(coords, 4);
+      const pts = sampleCoords(coords, Math.max(6, stops.length*4));
       const winds = [];
       for(const c of pts){
         try{ winds.push(await windAt(c[1], c[0])); }catch(e){}
       }
-      ROUTE_WIND[d.name] = winds.reduce((m,w)=>({
-        spd: Math.max(m.spd, w.spd),
-        gst: Math.max(m.gst, w.gst),
-        daySpd: Math.max(m.daySpd, w.daySpd),
-        dayGst: Math.max(m.dayGst, w.dayGst),
-        rain: Math.max(m.rain, w.rain||0),
-        snow: Math.max(m.snow, w.snow||0),
-        ice: Math.max(m.ice||0, w.ice||0),
-        vis: Math.min(m.vis==null?99999:m.vis, w.vis==null?99999:w.vis),
-        precip: Math.max(m.precip, w.precip||0),
-        code: Math.max(m.code, w.code||0),
-        windLoc: (Math.max(w.spd,w.gst) >= Math.max(m.spd,m.gst)) ? (w.loc||m.windLoc) : m.windLoc,
-        snowLoc: ((w.snow||0)+(w.ice||0) >= (m.snow||0)+(m.ice||0)) ? (w.loc||m.snowLoc) : m.snowLoc,
-        visLoc: ((w.vis==null?99999:w.vis) <= (m.vis==null?99999:m.vis)) ? (w.loc||m.visLoc) : m.visLoc
-      }), {spd:0,gst:0,daySpd:0,dayGst:0,rain:0,snow:0,ice:0,vis:99999,precip:0,code:0,windLoc:'',snowLoc:'',visLoc:''});
+      let used = 0;
+      stops.forEach((s, i)=>{
+        const cut = Math.round(((i+1)/stops.length) * winds.length);
+        const slice = winds.slice(0, Math.max(cut, used+1));
+        used = slice.length;
+        ROUTE_WIND[s.name] = foldWind(slice);
+      });
     }catch(e){
-      ROUTE_WIND[d.name] = null;
+      stops.forEach(s => { if(!ROUTE_WIND[s.name]) ROUTE_WIND[s.name] = null; });
     }
-  }));
+  }
   saveWindCache();
   if(LAST_WX.length) paintWx(LAST_WX);
 }
 function loadWindCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v5')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v6')||'null');
     if(j && j.ts && Date.now()-j.ts < 60*60*1000) return j.rows;
   }catch(e){}
   return null;
 }
 function saveWindCache(){
-  try{ localStorage.setItem('slc-wind-cache-v5', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
+  try{ localStorage.setItem('slc-wind-cache-v6', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
 }
 
 const CORRIDORS = [
@@ -650,6 +668,9 @@ async function nwsForecast(p){
     const fc = await fetchT(pt.properties.forecast, 8000, {Accept:'application/geo+json'});
     const periods = (fc.properties.periods||[]).slice(0,3);
     const now = periods[0] || {};
+    const spd = now.windSpeed ? Math.max(...(String(now.windSpeed).match(/\d+/g)||['0']).map(Number)) : 0;
+    const gmatch = String(now.detailedForecast||'').match(/gusts?(?: as high as| up to| to)?\s*(\d+)/i);
+    const gst = gmatch ? Number(gmatch[1]) : spd;
     return {
       current:{
         temperature_2m: now.temperature,
@@ -657,8 +678,8 @@ async function nwsForecast(p){
         weather_code: codeFromText(now.shortForecast),
         rain: 0,
         snowfall: 0,
-        wind_speed_10m: now.windSpeed ? Math.max(...(String(now.windSpeed).match(/\d+/g)||['0']).map(Number)) : 0,
-        wind_gusts_10m: now.windSpeed ? Math.max(...(String(now.windSpeed).match(/\d+/g)||['0']).map(Number)) : 0
+        wind_speed_10m: spd,
+        wind_gusts_10m: gst
       },
       daily:{
         time: periods.map(x=>x.startTime.slice(0,10)),
@@ -674,7 +695,7 @@ async function nwsForecast(p){
 }
 function paintWx(cards){
   const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  document.getElementById('wxGrid').innerHTML = cards.map(row=>{
+  const html = cards.map(row=>{
     const p = row.p || ALL.find(x=>x.name===row.name) || {name:row.name};
     const j = row.j;
     const alert = row.alert || null;
@@ -726,11 +747,13 @@ function paintWx(cards){
         <div class="temp ${hot?'hot':''}">${Math.round(c.temperature_2m)}<small>°F<\/small><\/div>
         <div class="meta">${wmo(c.weather_code)}<br>Humidity ${c.relative_humidity_2m}%<br>${extra}<\/div>
       <\/div>
-      <div class="windline">${spd} mph / ${gst} gust · ${rw?'route high':'city'} · ${windLabel}<\/div>
+      <div class="windline">W ${spd} · G ${gst} · ${rw?'route high':'city'} · ${windLabel}<\/div>
       <div class="fc">${f}<\/div>
     <\/div>`;
   }).join('');
-
+  document.getElementById('wxGrid').innerHTML = html;
+  const key = document.getElementById('flashKey');
+  if(key) key.classList.toggle('show', /flash-red|flash-yellow/.test(html));
 }
 
 function tick(){
