@@ -534,7 +534,7 @@ async function loadRouteWinds(){
 function loadWindCache(){
   try{
     const j = JSON.parse(localStorage.getItem('slc-wind-cache-v8')||'null');
-    if(j && j.ts && Date.now()-j.ts < 60*60*1000) return j.rows;
+    if(j && j.ts && Date.now()-j.ts < 2*60*60*1000) return j.rows;
   }catch(e){}
   return null;
 }
@@ -930,7 +930,7 @@ async function refreshAll(){
   paintFallbackTimes();
   await refreshAll();
   setInterval(refreshAll, 15*60*1000);
-  setInterval(function(){ location.reload(); }, 15*60*1000);
+  setInterval(function(){ location.reload(); }, 60*60*1000);
 })();
 </script>
 </body>
