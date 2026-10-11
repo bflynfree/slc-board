@@ -256,7 +256,7 @@
     <span class="credit">Created By Austin Platt</span>
     <span id="clock">—</span>
     <span id="status"></span>
-    <span class="flash-key" id="flashKey"><span class="y">Yellow = Winds 35+ mph or National Weather Service Warning</span> · <span class="r">Red = Winds 45+ MPH No LCV / Over Length</span></span>
+    <span class="flash-key" id="flashKey"><span class="y">Yellow = Caution Wind over 35 mph, gusts over 45 mph or National Weather Advisory</span> · <span class="r">Red = Extreme Caution No LCV Consistent Winds over 45 mph Low visibility or Snow Ice Accumulation</span></span>
   </footer>
 </div>
 
@@ -327,7 +327,7 @@ function initMap(){
 function centerOnSLC(){
   if(!map) return;
   map.invalidateSize();
-  map.setView([ORIGIN.lat, ORIGIN.lon], 5.7, {animate:false});
+  map.setView([ORIGIN.lat, ORIGIN.lon], 6.7, {animate:false});
   map.panBy([0, 20], {animate:false});
 }
 
@@ -778,8 +778,8 @@ function paintWx(cards){
     for(let i=1;i<names.length;i++){
       const near = byName[names[i-1]], far = byName[names[i]];
       if(!near || !far || !near.j || !far.j) continue;
-      const nearRed = near.spd>45 || near.gst>45 || (near.rw && ((near.rw.snow||0)>0 || (near.rw.ice||0)>0 || (near.rw.vis!=null && near.rw.vis<1000)));
-      const nearYellow = !nearRed && (near.spd>=35 || near.gst>=35 || near.official);
+      const nearRed = near.spd>45 || (near.rw && ((near.rw.snow||0)>0 || (near.rw.ice||0)>0 || (near.rw.vis!=null && near.rw.vis<1000)));
+      const nearYellow = !nearRed && (near.spd>35 || near.gst>45 || near.official);
       if(nearRed){
         far.spd = Math.max(far.spd, near.spd);
         far.gst = Math.max(far.gst, near.gst);
@@ -807,19 +807,19 @@ function paintWx(cards){
     const hot = c.temperature_2m>=95;
     const rw = b.rw;
     const nws = !!b.official;
-    const windHigh = b.spd>45 || b.gst>45;
-    const windCaution = !windHigh && (b.spd>=35 || b.gst>=35);
     const snowIce = rw && ((rw.snow||0)>0 || (rw.ice||0)>0);
     const lowVis = rw && rw.vis!=null && rw.vis<1000;
-    const windAdv = !!(windHigh || snowIce || lowVis);
+    const windHigh = b.spd>45 || snowIce || lowVis;
+    const windCaution = !windHigh && (b.spd>35 || b.gst>45 || nws);
+    const windAdv = windHigh;
     const eta = driveFor(b.p.name);
     const isHub = b.p.name === ORIGIN.name;
     const timeLine = isHub ? 'Origin' : (eta ? (eta.closed ? 'Road Closed?' : shortTime(eta.duration)) : '…');
     const miLine = isHub ? '' : (eta ? (eta.delayed && !eta.closed ? 'Check route' : (eta.distance!=null?fmtMi(eta.distance):'')) : '');
     const windPlace = (rw && rw.windLoc) || b.via || 'route';
     let flash='', windLabel = 'Clear';
-    if(windAdv){ flash='flash-red'; windLabel = 'NO LCV High Winds Along Route'; }
-    else if(windCaution || nws){ flash='flash-yellow'; windLabel = 'Caution · Winds 35+ mph'; }
+    if(windHigh){ flash='flash-red'; windLabel = 'Extreme Caution No LCV'; }
+    else if(windCaution){ flash='flash-yellow'; windLabel = 'Caution'; }
     return `<div class="wx ${flash}">
       <div class="name">${shortName(b.p.name)}<\/div>
       <div class="temp ${hot?'hot':''}">${Math.round(c.temperature_2m)}<small>°</small><\/div>
