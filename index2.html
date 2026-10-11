@@ -122,24 +122,35 @@
   .bar-snow{width:70px;height:8px;border-radius:2px;display:inline-block;
     background:linear-gradient(90deg,#fafafa,#b3e5fc,#81d4fa,#ffffff)}
   .wx.flash-yellow{
-    animation:flashY 1s ease-in-out infinite;
+    animation:flashY 2s ease-in-out infinite;
     border-color:#ffb74d;
   }
+  .wx.flash-both{
+    animation:flashBoth 1.6s ease-in-out infinite;
+    border-color:#ffb74d;
+  }
+  @keyframes flashBoth{
+    0%,100%{background:#3a2e10;box-shadow:0 0 16px rgba(255,183,77,.65);border-color:#ffb74d}
+    50%{background:#3a1212;box-shadow:0 0 18px rgba(239,83,80,.75);border-color:#ef5350}
+  }
+  .wx.flash-both .windline{color:#ffe082;font-weight:700}
   .wx.flash-red{
-    animation:flashR .8s ease-in-out infinite;
+    animation:flashR 2.8s ease-in-out infinite;
     border-color:#ef5350;
+    background:#7f1d1d;
+    color:#fff;
+  }
+  @keyframes flashR{
+    0%,100%{background:#7f1d1d;box-shadow:0 0 8px rgba(239,83,80,.4)}
+    50%{background:#991b1b;box-shadow:0 0 14px rgba(239,83,80,.7)}
   }
   @keyframes flashY{
     0%,100%{background:#0b1c30;box-shadow:0 0 0 rgba(255,183,77,0)}
     50%{background:#3a2e10;box-shadow:0 0 16px rgba(255,183,77,.65)}
   }
-  @keyframes flashR{
-    0%,100%{background:#0b1c30;box-shadow:0 0 0 rgba(239,83,80,0)}
-    50%{background:#3a1212;box-shadow:0 0 18px rgba(239,83,80,.75)}
-  }
   .wx .windline{font-size:10px;margin-top:3px;color:var(--dim)}
   .wx.flash-yellow .windline{color:#ffcc80;font-weight:700}
-  .wx.flash-red .windline{color:#ef9a9a;font-weight:700}
+  .wx.flash-red .windline{color:#fff;font-weight:700}
   .map-key{
     background:rgba(11,28,48,.92);color:#eaf6ff;padding:6px 8px;border-radius:6px;
     border:1px solid #1e4a72;font-size:10px;line-height:1.35;min-width:168px;
@@ -150,19 +161,19 @@
     display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:6px;min-width:0;
   }
   .wx{
-    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 7px 6px;
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 5px 5px;
     height:100%;display:flex;flex-direction:column;min-width:0;overflow:hidden;
   }
-  .wx .name{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:16px;line-height:16px}
-  .wx .now{display:flex;align-items:flex-start;gap:6px;margin:2px 0 2px;height:40px}
-  .wx .temp{font-family:Orbitron,sans-serif;font-size:20px;font-weight:800;line-height:1;min-width:44px}
-  .wx .temp small{font-size:10px;color:var(--dim);font-weight:600}
-  .wx .meta{font-size:10px;color:var(--dim);line-height:1.25;height:40px;overflow:hidden}
-  .wx .windline{height:14px;line-height:14px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:2px;font-size:10px}
-  .fc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;border-top:1px solid var(--line);padding-top:4px;margin-top:4px}
-  .fc > div{text-align:center;height:54px}
-  .fc .d{color:var(--ice);font-weight:700;font-size:9px;height:12px;line-height:12px}
-  .fc .r{font-family:Orbitron,sans-serif;font-size:10px;height:13px;line-height:13px}
+  .wx .name{font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:15px;line-height:15px}
+  .wx .now{display:flex;align-items:flex-start;gap:4px;margin:1px 0;min-height:36px}
+  .wx .temp{font-family:Orbitron,sans-serif;font-size:18px;font-weight:800;line-height:1;min-width:38px;flex:0 0 auto}
+  .wx .temp small{font-size:9px;color:var(--dim);font-weight:600}
+  .wx .meta{font-size:9px;color:var(--dim);line-height:1.2;min-height:34px;overflow:hidden}
+  .wx .windline{min-height:24px;line-height:1.15;overflow:hidden;white-space:normal;margin-top:2px;font-size:9px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .fc{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;border-top:1px solid var(--line);padding-top:3px;margin-top:3px}
+  .fc > div{text-align:center;height:48px;min-width:0}
+  .fc .d{color:var(--ice);font-weight:700;font-size:8px;height:11px;line-height:11px;white-space:nowrap;overflow:hidden}
+  .fc .r{font-family:Orbitron,sans-serif;font-size:9px;height:12px;line-height:12px;white-space:nowrap}
   .fc .c{height:28px;display:flex;align-items:center;justify-content:center}
   .fc .wxico{width:22px;height:22px}
   .wxico{width:20px;height:20px;vertical-align:middle;display:inline-block;overflow:visible}
@@ -182,6 +193,9 @@
   .hot{color:var(--hot)}
   footer{display:flex;align-items:center;justify-content:center;gap:14px;color:var(--dim);font-size:11px;line-height:1.2;padding:2px 0}
   footer .credit{color:var(--dim);letter-spacing:0;font-family:inherit;font-size:11px;font-weight:400;text-shadow:none}
+  footer .flash-key{color:var(--dim)}
+  footer .flash-key .y{color:#ffcc80}
+  footer .flash-key .r{color:#ef9a9a}
   .badge-time{
     background:#0b1c30ee;border:1px solid #4fc3f7;color:#fff;
     font-family:Orbitron,sans-serif;font-size:11px;font-weight:700;
@@ -229,6 +243,7 @@
     <span class="credit">Created By Austin Platt</span>
     <span id="clock">—</span>
     <span id="status"></span>
+    <span class="flash-key"><span class="r">Red flash = wind over 45, snow/ice, or vis under 1000 ft</span> · <span class="y">Yellow flash = National Weather Service Warning</span></span>
   </footer>
 </div>
 
@@ -391,13 +406,22 @@ function sampleCoords(coords, n){
   return out;
 }
 
+function firstGrid(prop){
+  const v = prop && prop.values && prop.values[0] && prop.values[0].value;
+  return v==null ? 0 : v;
+}
 async function windAt(lat, lon){
   const pt = await fetchT(`https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`, 8000, {Accept:'application/geo+json'});
-  const fc = await fetchT(pt.properties.forecast, 8000, {Accept:'application/geo+json'});
-  const now = (fc.properties.periods||[])[0] || {};
-  const nums = String(now.windSpeed||'').match(/\d+/g) || ['0'];
-  const spd = Math.max(...nums.map(Number));
-  return {spd, gst: spd, daySpd: spd, dayGst: spd, rain:0, snow:0, precip:0, code: codeFromText(now.shortForecast)};
+  const grid = pt.properties.forecastGridData ? await fetchT(pt.properties.forecastGridData, 8000, {Accept:'application/geo+json'}) : null;
+  const g = (grid && grid.properties) || {};
+  const spd = Math.round(firstGrid(g.windSpeed) * 0.621371);
+  const gst = Math.round((firstGrid(g.windGust) || firstGrid(g.windSpeed)) * 0.621371);
+  const snowMm = firstGrid(g.snowfallAmount);
+  const iceMm = firstGrid(g.iceAccumulation);
+  const visFt = firstGrid(g.visibility) ? Math.round(firstGrid(g.visibility) * 3.28084) : 99999;
+  let code = 0;
+  if(snowMm>0 || iceMm>0) code = 73;
+  return {spd, gst, daySpd: spd, dayGst: gst, rain:0, snow: snowMm/25.4, ice: iceMm/25.4, vis: visFt, precip:0, code};
 }
 
 let LAST_WX = [];
@@ -413,7 +437,7 @@ async function loadRouteWinds(){
       const url = `https://router.project-osrm.org/route/v1/driving/${ORIGIN.lon},${ORIGIN.lat};${d.lon},${d.lat}?overview=simplified&geometries=geojson`;
       const j = await fetchT(url, 12000);
       const coords = (j.routes && j.routes[0] && j.routes[0].geometry.coordinates)||[];
-      const pts = sampleCoords(coords, 5);
+      const pts = sampleCoords(coords, 7);
       const winds = [];
       for(const c of pts){
         try{ winds.push(await windAt(c[1], c[0])); }catch(e){}
@@ -425,9 +449,11 @@ async function loadRouteWinds(){
         dayGst: Math.max(m.dayGst, w.dayGst),
         rain: Math.max(m.rain, w.rain||0),
         snow: Math.max(m.snow, w.snow||0),
+        ice: Math.max(m.ice||0, w.ice||0),
+        vis: Math.min(m.vis==null?99999:m.vis, w.vis==null?99999:w.vis),
         precip: Math.max(m.precip, w.precip||0),
         code: Math.max(m.code, w.code||0)
-      }), {spd:0,gst:0,daySpd:0,dayGst:0,rain:0,snow:0,precip:0,code:0});
+      }), {spd:0,gst:0,daySpd:0,dayGst:0,rain:0,snow:0,ice:0,vis:99999,precip:0,code:0});
     }catch(e){
       ROUTE_WIND[d.name] = null;
     }
@@ -437,13 +463,13 @@ async function loadRouteWinds(){
 }
 function loadWindCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wind-cache')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v3')||'null');
     if(j && j.ts && Date.now()-j.ts < 60*60*1000) return j.rows;
   }catch(e){}
   return null;
 }
 function saveWindCache(){
-  try{ localStorage.setItem('slc-wind-cache', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
+  try{ localStorage.setItem('slc-wind-cache-v3', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
 }
 
 const CORRIDORS = [
@@ -668,19 +694,18 @@ function paintWx(cards){
     const snowIn = (c.snowfall||0).toFixed(2);
     const extra = `Rain ${rainIn}" · Snow ${snowIn}"`;
     const rw = ROUTE_WIND[p.name];
-    const localSpd = c.wind_speed_10m||0;
-    const localGst = c.wind_gusts_10m||0;
-    const localDay = (d.wind_gusts_10m_max&&d.wind_gusts_10m_max[0])||localGst;
-    const spd = Math.round(rw ? Math.max(rw.spd, rw.daySpd, localSpd) : localSpd);
-    const gst = Math.round(rw ? Math.max(rw.gst, rw.dayGst, localGst, localDay) : Math.max(localGst, localDay));
+    const spd = Math.round(rw ? Math.max(rw.spd||0, rw.daySpd||0) : 0);
+    const gst = Math.round(rw ? Math.max(rw.gst||0, rw.dayGst||0) : 0);
     const official = alert || '';
-    const windWarn = /High Wind Warning/i.test(official);
-    const severeWx = /Severe Thunderstorm Warning|Tornado Warning|Winter Storm Warning|Blizzard Warning|Ice Storm Warning/i.test(official);
-    const windAdv = !windWarn && (spd>=31 || gst>=46);
-    let flash='', windLabel = stormNote || 'No advisory';
-    if(windWarn && severeWx){ flash='flash-red'; windLabel=official; }
-    else if(severeWx || windWarn){ flash='flash-red'; windLabel=official; }
-    else if(windAdv){ flash='flash-yellow'; windLabel='WIND ADVISORY'; }
+    const nws = !!(official);
+    const windHigh = rw && (spd>45 || gst>45);
+    const snowIce = rw && ((rw.snow||0)>0 || (rw.ice||0)>0);
+    const lowVis = rw && rw.vis!=null && rw.vis<1000;
+    const windAdv = !!(windHigh || snowIce || lowVis);
+    const why = [windHigh?'wind >45':null, snowIce?'snow/ice':null, lowVis?'vis <1000 ft':null].filter(Boolean).join(', ');
+    let flash='', windLabel = rw ? (stormNote || 'No advisory') : 'route check pending';
+    if(windAdv){ flash='flash-red'; windLabel = (nws ? official + ' + ' : '') + why + ' along route'; }
+    else if(nws){ flash='flash-yellow'; windLabel = official; }
     else if(stormNote){ windLabel = stormNote; }
     const scope = rw ? 'along route' : 'at city';
     return `<div class="wx ${flash}">
@@ -689,7 +714,7 @@ function paintWx(cards){
         <div class="temp ${hot?'hot':''}">${Math.round(c.temperature_2m)}<small>°F<\/small><\/div>
         <div class="meta">${wmo(c.weather_code)}<br>Humidity ${c.relative_humidity_2m}%<br>${extra}<\/div>
       <\/div>
-      <div class="windline">${spd} mph gust ${gst} · highest on route · ${windLabel}<\/div>
+      <div class="windline">${rw ? (spd+' mph / '+gst+' gust') : '—'} · 7 pts on route · ${windLabel}<\/div>
       <div class="fc">${f}<\/div>
     <\/div>`;
   }).join('');
