@@ -944,23 +944,22 @@ function windArrowIcon(mph, dir){
 async function loadWindArrows(){
   if(!map || typeof L === 'undefined') return;
   try{
-    const cached = JSON.parse(localStorage.getItem('slc-wind-arrows-v1')||'null');
-    if(cached && Date.now()-cached.ts < 60*60*1000){ paintWindArrows(cached.rows); return; }
+    const cached = JSON.parse(localStorage.getItem('slc-wind-arrows-v2')||'null');
+    if(cached && cached.rows && cached.rows.length && Date.now()-cached.ts < 60*60*1000){ paintWindArrows(cached.rows); return; }
   }catch(e){}
-  const pts = ALL.map(p=>({lat:p.lat, lon:p.lon, name:p.name}));
-  for(let lat=37; lat<=45; lat+=2){
-    for(let lon=-116; lon<=-107; lon+=3) pts.push({lat, lon});
-  }
   const rows = [];
-  for(const p of pts){
+  for(const p of ALL){
     try{
       const j = await fetchT(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=mph`, 8000);
       const c = j.current || {};
-      rows.push({lat:p.lat, lon:p.lon, spd:Math.round(c.wind_speed_10m||0), gst:Math.round(c.wind_gusts_10m||0), dir:c.wind_direction_10m||0, name:p.name||''});
+      if(c.wind_speed_10m!=null) rows.push({lat:p.lat, lon:p.lon, spd:Math.round(c.wind_speed_10m||0), gst:Math.round(c.wind_gusts_10m||0), dir:c.wind_direction_10m||0, name:p.name});
     }catch(e){}
+    await new Promise(r=>setTimeout(r, 400));
   }
-  try{ localStorage.setItem('slc-wind-arrows-v1', JSON.stringify({ts:Date.now(), rows})); }catch(e){}
-  paintWindArrows(rows);
+  if(rows.length){
+    try{ localStorage.setItem('slc-wind-arrows-v2', JSON.stringify({ts:Date.now(), rows})); }catch(e){}
+    paintWindArrows(rows);
+  }
 }
 function paintWindArrows(rows){
   if(!map || !rows) return;
@@ -985,4 +984,3 @@ function paintWindArrows(rows){
 </script>
 </body>
 </html>
-
