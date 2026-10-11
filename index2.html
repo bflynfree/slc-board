@@ -245,7 +245,7 @@
     <span class="credit">Created By Austin Platt</span>
     <span id="clock">—</span>
     <span id="status"></span>
-    <span class="flash-key" id="flashKey"><span class="r">LCV Not Allowed = wind over 45, snow/ice, or vis under 1000 ft</span> · <span class="y">Caution = National Weather Service Warning</span></span>
+    <span class="flash-key" id="flashKey"><span class="r">LCV Not Allowed = wind over 45, snow/ice, or vis under 1000 ft</span> · <span class="y">Caution = wind 35-44 or National Weather Service Warning</span></span>
   </footer>
 </div>
 
@@ -748,6 +748,7 @@ function paintWx(cards){
       const near = byName[names[i-1]], far = byName[names[i]];
       if(!near || !far || !near.j || !far.j) continue;
       const nearRed = near.spd>45 || near.gst>45 || (near.rw && ((near.rw.snow||0)>0 || (near.rw.ice||0)>0 || (near.rw.vis!=null && near.rw.vis<1000)));
+      const nearYellow = !nearRed && (near.spd>=35 || near.gst>=35 || near.official);
       if(nearRed){
         far.spd = Math.max(far.spd, near.spd);
         far.gst = Math.max(far.gst, near.gst);
@@ -761,8 +762,10 @@ function paintWx(cards){
             windLoc: (near.spd>=far.spd || near.gst>=far.gst) ? (near.rw.windLoc||near.p.name) : far.rw.windLoc
           });
         }
-      }else if(near.official){
-        if(!far.official) far.official = near.official;
+      }else if(nearYellow){
+        far.spd = Math.max(far.spd, near.spd);
+        far.gst = Math.max(far.gst, near.gst);
+        if(near.official && !far.official) far.official = near.official;
         far.via = near.p.name;
       }
     }
@@ -774,6 +777,7 @@ function paintWx(cards){
     const rw = b.rw;
     const nws = !!b.official;
     const windHigh = b.spd>45 || b.gst>45;
+    const windCaution = !windHigh && (b.spd>=35 || b.gst>=35);
     const snowIce = rw && ((rw.snow||0)>0 || (rw.ice||0)>0);
     const lowVis = rw && rw.vis!=null && rw.vis<1000;
     const windAdv = !!(windHigh || snowIce || lowVis);
@@ -781,7 +785,7 @@ function paintWx(cards){
     const why = [windHigh?('wind >45'+where):null, snowIce?('snow/ice'+(rw&&rw.snowLoc?' @ '+rw.snowLoc:'')):null, lowVis?('vis <1000 ft'+(rw&&rw.visLoc?' @ '+rw.visLoc:'')):null].filter(Boolean).join(', ');
     let flash='', windLabel = rw ? (b.stormNote || 'No advisory') : 'city wind, route check pending';
     if(windAdv){ flash='flash-red'; windLabel = 'LCV Not Allowed' + (why ? ' · ' + why : ''); }
-    else if(nws){ flash='flash-yellow'; windLabel = 'Caution · ' + b.official; }
+    else if(windCaution || nws){ flash='flash-yellow'; windLabel = 'Caution' + (windCaution ? ' · wind 35-44'+where : '') + (nws ? ' · '+b.official : ''); }
     else if(b.stormNote){ windLabel = b.stormNote; }
     return `<div class="wx ${flash}">
       <div class="name">${precipIcon(c.weather_code)} ${b.p.name}<\/div>
