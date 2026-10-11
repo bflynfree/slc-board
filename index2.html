@@ -409,8 +409,22 @@ function sampleCoords(coords, n){
 }
 
 function firstGrid(prop){
-  const v = prop && prop.values && prop.values[0] && prop.values[0].value;
-  return v==null ? 0 : v;
+  const vals = (prop && prop.values) || [];
+  const now = Date.now();
+  const hit = vals.find(v=>{
+    const t = String(v.validTime||'');
+    const start = Date.parse(t.split('/')[0]);
+    const hours = /PT(\d+)H/.exec(t);
+    const end = start + ((hours?Number(hours[1]):1)*3600000);
+    return now>=start && now<end;
+  }) || vals[0];
+  return hit && hit.value!=null ? hit.value : 0;
+}
+function toMph(value, uom){
+  const u = String(uom||'').toLowerCase();
+  if(u.includes('m_s') || u.includes('m/s')) return value * 2.23694;
+  if(u.includes('km_h') || u.includes('km/h')) return value * 0.621371;
+  return value;
 }
 async function windAt(lat, lon){
   const pt = await fetchT(`https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`, 8000, {Accept:'application/geo+json'});
@@ -419,10 +433,11 @@ async function windAt(lat, lon){
   try{
     const grid = pt.properties.forecastGridData ? await fetchT(pt.properties.forecastGridData, 8000, {Accept:'application/geo+json'}) : null;
     const g = (grid && grid.properties) || {};
-    const spd = Math.round(firstGrid(g.windSpeed) * 0.621371);
-    const gst = Math.round((firstGrid(g.windGust) || firstGrid(g.windSpeed)) * 0.621371);
+    const spd = Math.round(toMph(firstGrid(g.windSpeed), g.windSpeed && g.windSpeed.uom));
+    const gst = Math.round(toMph(firstGrid(g.windGust) || firstGrid(g.windSpeed), (g.windGust&&g.windGust.uom) || (g.windSpeed&&g.windSpeed.uom)));
+    const named = (loc==='Salt Lake City, UT' && Math.hypot(lat-ORIGIN.lat, lon-ORIGIN.lon) > 0.15) ? '' : loc;
     if(spd || gst){
-      return {spd, gst, daySpd: spd, dayGst: gst, rain:0, snow: firstGrid(g.snowfallAmount)/25.4, ice: firstGrid(g.iceAccumulation)/25.4, vis: firstGrid(g.visibility)?Math.round(firstGrid(g.visibility)*3.28084):99999, precip:0, code: (firstGrid(g.snowfallAmount)||firstGrid(g.iceAccumulation))?73:0, loc};
+      return {spd, gst, daySpd: spd, dayGst: gst, rain:0, snow: firstGrid(g.snowfallAmount)/25.4, ice: firstGrid(g.iceAccumulation)/25.4, vis: firstGrid(g.visibility)?Math.round(firstGrid(g.visibility)*3.28084):99999, precip:0, code: (firstGrid(g.snowfallAmount)||firstGrid(g.iceAccumulation))?73:0, loc: named};
     }
   }catch(e){}
   const fc = await fetchT(pt.properties.forecast, 8000, {Accept:'application/geo+json'});
@@ -492,13 +507,13 @@ async function loadRouteWinds(){
 }
 function loadWindCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v6')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v7')||'null');
     if(j && j.ts && Date.now()-j.ts < 60*60*1000) return j.rows;
   }catch(e){}
   return null;
 }
 function saveWindCache(){
-  try{ localStorage.setItem('slc-wind-cache-v6', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
+  try{ localStorage.setItem('slc-wind-cache-v7', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
 }
 
 const CORRIDORS = [
@@ -638,13 +653,13 @@ async function weather(){
 
 function loadWxCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v3')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v4')||'null');
     if(!j || Date.now()-j.ts > 60*60*1000) return null;
     return j.cards;
   }catch(e){ return null; }
 }
 function saveWxCache(cards){
-  try{ localStorage.setItem('slc-wx-cache-v3', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
+  try{ localStorage.setItem('slc-wx-cache-v4', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
 }
 function codeFromText(t){
   t=(t||'').toLowerCase();
@@ -674,8 +689,8 @@ async function nwsForecast(p){
     try{
       const grid = pt.properties.forecastGridData ? await fetchT(pt.properties.forecastGridData, 8000, {Accept:'application/geo+json'}) : null;
       const g = (grid && grid.properties) || {};
-      const gspd = Math.round(firstGrid(g.windSpeed) * 0.621371);
-      const ggst = Math.round((firstGrid(g.windGust) || firstGrid(g.windSpeed)) * 0.621371);
+      const gspd = Math.round(toMph(firstGrid(g.windSpeed), g.windSpeed && g.windSpeed.uom));
+      const ggst = Math.round(toMph(firstGrid(g.windGust) || firstGrid(g.windSpeed), (g.windGust&&g.windGust.uom) || (g.windSpeed&&g.windSpeed.uom)));
       if(ggst) gst = Math.max(gst, ggst);
     }catch(e){}
     const gmatch = String(now.detailedForecast||'').match(/gusts?(?: as high as| up to| to)?\s*(\d+)/i);
