@@ -392,28 +392,32 @@ function sampleCoords(coords, n){
 }
 
 async function windAt(lat, lon){
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_gusts_10m,rain,snowfall,precipitation,weather_code&daily=wind_speed_10m_max,wind_gusts_10m_max&wind_speed_unit=mph&precipitation_unit=inch&timezone=America/Denver&forecast_days=1`;
-  const j = await fetchT(url, 10000);
-  return {
-    spd: j.current.wind_speed_10m||0,
-    gst: j.current.wind_gusts_10m||0,
-    daySpd: (j.daily.wind_speed_10m_max&&j.daily.wind_speed_10m_max[0])||0,
-    dayGst: (j.daily.wind_gusts_10m_max&&j.daily.wind_gusts_10m_max[0])||0,
-    rain: j.current.rain||0,
-    snow: j.current.snowfall||0,
-    precip: j.current.precipitation||0,
-    code: j.current.weather_code||0
-  };
+  const pt = await fetchT(`https://api.weather.gov/points/${lat.toFixed(4)},${lon.toFixed(4)}`, 8000, {Accept:'application/geo+json'});
+  const fc = await fetchT(pt.properties.forecast, 8000, {Accept:'application/geo+json'});
+  const now = (fc.properties.periods||[])[0] || {};
+  const nums = String(now.windSpeed||'').match(/\d+/g) || ['0'];
+  const spd = Math.max(...nums.map(Number));
+  return {spd, gst: spd, daySpd: spd, dayGst: spd, rain:0, snow:0, precip:0, code: codeFromText(now.shortForecast)};
 }
 
+let LAST_WX = [];
 async function loadRouteWinds(){
+  const cached = loadWindCache();
+  if(cached){
+    Object.assign(ROUTE_WIND, cached);
+    if(LAST_WX.length) paintWx(LAST_WX);
+    return;
+  }
   await Promise.all(DEST.map(async d=>{
     try{
       const url = `https://router.project-osrm.org/route/v1/driving/${ORIGIN.lon},${ORIGIN.lat};${d.lon},${d.lat}?overview=simplified&geometries=geojson`;
       const j = await fetchT(url, 12000);
       const coords = (j.routes && j.routes[0] && j.routes[0].geometry.coordinates)||[];
-      const pts = sampleCoords(coords, 3);
-      const winds = await Promise.all(pts.map(c=>windAt(c[1], c[0])));
+      const pts = sampleCoords(coords, 5);
+      const winds = [];
+      for(const c of pts){
+        try{ winds.push(await windAt(c[1], c[0])); }catch(e){}
+      }
       ROUTE_WIND[d.name] = winds.reduce((m,w)=>({
         spd: Math.max(m.spd, w.spd),
         gst: Math.max(m.gst, w.gst),
@@ -428,6 +432,18 @@ async function loadRouteWinds(){
       ROUTE_WIND[d.name] = null;
     }
   }));
+  saveWindCache();
+  if(LAST_WX.length) paintWx(LAST_WX);
+}
+function loadWindCache(){
+  try{
+    const j = JSON.parse(localStorage.getItem('slc-wind-cache')||'null');
+    if(j && j.ts && Date.now()-j.ts < 60*60*1000) return j.rows;
+  }catch(e){}
+  return null;
+}
+function saveWindCache(){
+  try{ localStorage.setItem('slc-wind-cache', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
 }
 
 const CORRIDORS = [
@@ -557,16 +573,18 @@ async function weather(){
     const alert = await nwsAlert(p);
     cards.push({p, j, alert});
     paintWx(cards.slice());
+    LAST_WX = cards.slice();
   }));
   cards.sort((a,b)=>wxPlaces.findIndex(p=>p.name===a.p.name)-wxPlaces.findIndex(p=>p.name===b.p.name));
   if(cards.some(c=>c.j)) saveWxCache(cards.map(c=>({name:c.p.name, j:c.j})));
   paintWx(cards);
+  LAST_WX = cards.slice();
 }
 
 function loadWxCache(){
   try{
     const j = JSON.parse(localStorage.getItem('slc-wx-cache-v2')||'null');
-    if(!j || Date.now()-j.ts > 30*60*1000) return null;
+    if(!j || Date.now()-j.ts > 60*60*1000) return null;
     return j.cards;
   }catch(e){ return null; }
 }
@@ -671,7 +689,7 @@ function paintWx(cards){
         <div class="temp ${hot?'hot':''}">${Math.round(c.temperature_2m)}<small>°F<\/small><\/div>
         <div class="meta">${wmo(c.weather_code)}<br>Humidity ${c.relative_humidity_2m}%<br>${extra}<\/div>
       <\/div>
-      <div class="windline">${spd} mph gust ${gst} · ${windLabel}<\/div>
+      <div class="windline">${spd} mph gust ${gst} · highest on route · ${windLabel}<\/div>
       <div class="fc">${f}<\/div>
     <\/div>`;
   }).join('');
@@ -781,8 +799,8 @@ async function refreshAll(){
   }
   paintFallbackTimes();
   await refreshAll();
-  setInterval(refreshAll, 5*60*1000);
-  setInterval(function(){ location.reload(); }, 10*60*1000);
+  setInterval(refreshAll, 15*60*1000);
+  setInterval(function(){ location.reload(); }, 15*60*1000);
 })();
 </script>
 </body>
