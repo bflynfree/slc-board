@@ -29,11 +29,11 @@
   }
   .layout{
     display:grid;
-    grid-template-columns:repeat(9,minmax(0,1fr));
-    grid-template-rows:repeat(6,minmax(0,1fr));
+    grid-template-columns:minmax(190px,1fr) minmax(0,1fr) minmax(190px,1fr);
+    grid-template-rows:repeat(7,minmax(0,1fr));
     gap:5px;min-height:0;height:100%;
   }
-  .map-wrap{grid-column:2 / 10;grid-row:1 / 6;position:relative;min-height:0;height:100%;overflow:hidden}
+  .map-wrap{grid-column:2;grid-row:1 / 8;position:relative;min-height:0;height:100%;aspect-ratio:1/1;justify-self:center;overflow:hidden}
   .wx-grid{display:contents}
   .wx{height:100%;min-height:0}
   .mast{
@@ -98,7 +98,7 @@
   .eta.closed{background:#2a1212}
   .eta .closed-tag{color:#ef9a9a;font-weight:800;font-size:10px;letter-spacing:.06em}
   #joke{
-    grid-column:9;grid-row:6;
+    grid-column:3;grid-row:7;
     background:var(--panel);border:1px solid var(--line);border-radius:6px;
     padding:6px 7px;font-size:clamp(11px,1.3vh,16px);color:var(--txt);line-height:1.2;
     min-width:0;min-height:0;overflow:hidden;
@@ -170,8 +170,8 @@
   .wx-grid{display:contents}
   .wx{
     background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 6px 4px;
-    height:100%;display:grid;min-width:0;overflow:hidden;
-    grid-template-columns:minmax(0,1fr) 78px;
+    height:auto;min-height:92px;display:grid;min-width:0;overflow:hidden;
+    grid-template-columns:minmax(0,1fr) auto;
     grid-template-rows:auto auto auto minmax(0,1fr);
     grid-template-areas:"name temp" "drive cond" "mid mid" "fc fc";
     gap:2px 6px;align-items:center;
@@ -229,8 +229,7 @@
     box-shadow:0 0 8px rgba(0,0,0,.4);
   }
   @media (max-width:1200px){
-    .layout{grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(6,minmax(0,1fr))}
-    .map-wrap{grid-column:2 / 8;grid-row:1 / 5}
+    .layout{grid-template-columns:minmax(160px,1fr) minmax(0,1fr) minmax(160px,1fr)}
   }
 </style>
 </head>
@@ -327,7 +326,7 @@ function initMap(){
 function centerOnSLC(){
   if(!map) return;
   map.invalidateSize();
-  map.setView([ORIGIN.lat, ORIGIN.lon], 6.7, {animate:false});
+  map.setView([ORIGIN.lat, ORIGIN.lon], 5.7, {animate:false});
   map.panBy([0, 20], {animate:false});
 }
 
@@ -535,20 +534,21 @@ async function loadRouteWinds(){
 }
 function loadWindCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v8')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v9')||'null');
     if(j && j.ts && Date.now()-j.ts < 2*60*60*1000) return j.rows;
   }catch(e){}
   return null;
 }
 function saveWindCache(){
-  try{ localStorage.setItem('slc-wind-cache-v8', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
+  try{ localStorage.setItem('slc-wind-cache-v9', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
 }
 
 const CORRIDORS = [
   ['Burley, ID', 'Mountain Home, ID'],
   ['Idaho Falls, ID', 'Dubois, ID', 'Lima, MT'],
   ['Rock Springs, WY', 'Rawlins, WY'],
-  ['Grand Junction, CO', 'Dove Creek, CO'],
+  ['Grand Junction, CO'],
+  ['Dove Creek, CO'],
   ['Beaver, UT', 'St. George, UT'],
   ['Carlin, NV']
 ];
@@ -613,13 +613,13 @@ function applyLiveTime(d, r){
 const ROUTE_REFRESH_MS = 2*60*60*1000;
 function loadRouteCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-route-cache-v4')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-route-cache-v6')||'null');
     if(j && j.ts && (Date.now()-j.ts) < ROUTE_REFRESH_MS && j.rows) return j.rows;
   }catch(e){}
   return null;
 }
 function saveRouteCache(rows){
-  try{ localStorage.setItem('slc-route-cache-v4', JSON.stringify({ts:Date.now(), rows})); }catch(e){}
+  try{ localStorage.setItem('slc-route-cache-v6', JSON.stringify({ts:Date.now(), rows})); }catch(e){}
 }
 
 let LAST_ETA = [];
@@ -634,7 +634,7 @@ async function routes(){
     const d = DEST[i];
     let raw = cached && cached[i] ? cached[i] : null;
     if(!raw){
-      const live = await osrmCorridor(CORRIDORS.find(c => c.includes(d.name)) || [d.name]);
+      const live = await osrmCorridor([d.name]);
       Object.keys(live).forEach(name => {
         const idx = DEST.findIndex(x => x.name===name);
         if(idx>=0) rows[idx] = live[name];
@@ -779,7 +779,7 @@ function paintWx(cards){
       const near = byName[names[i-1]], far = byName[names[i]];
       if(!near || !far || !near.j || !far.j) continue;
       const nearRed = near.spd>45 || (near.rw && ((near.rw.snow||0)>0 || (near.rw.ice||0)>0 || (near.rw.vis!=null && near.rw.vis<1000)));
-      const nearYellow = !nearRed && (near.spd>35 || near.gst>45 || near.official);
+      const nearYellow = !nearRed && (near.spd>35 || near.gst>=45 || near.official);
       if(nearRed){
         far.spd = Math.max(far.spd, near.spd);
         far.gst = Math.max(far.gst, near.gst);
@@ -801,7 +801,7 @@ function paintWx(cards){
       }
     }
   });
-  const html = built.map(b=>{
+  const html = built.map((b,i)=>{
     if(!b.j) return `<div class="wx"><div class="name">${b.p.name}<\/div><div class="windline">—<\/div><\/div>`;
     const c=b.j.current;
     const hot = c.temperature_2m>=95;
@@ -810,7 +810,7 @@ function paintWx(cards){
     const snowIce = rw && ((rw.snow||0)>0 || (rw.ice||0)>0);
     const lowVis = rw && rw.vis!=null && rw.vis<1000;
     const windHigh = b.spd>45 || snowIce || lowVis;
-    const windCaution = !windHigh && (b.spd>35 || b.gst>45 || nws);
+    const windCaution = !windHigh && (b.spd>35 || b.gst>=45 || nws);
     const windAdv = windHigh;
     const eta = driveFor(b.p.name);
     const isHub = b.p.name === ORIGIN.name;
@@ -820,7 +820,7 @@ function paintWx(cards){
     let flash='', windLabel = 'Clear';
     if(windHigh){ flash='flash-red'; windLabel = 'Extreme Caution No LCV'; }
     else if(windCaution){ flash='flash-yellow'; windLabel = 'Caution'; }
-    return `<div class="wx ${flash}">
+    return `<div class="wx ${flash}" style="grid-column:${i<7?1:3};grid-row:${(i%7)+1}">
       <div class="name">${shortName(b.p.name)}<\/div>
       <div class="temp ${hot?'hot':''}">${Math.round(c.temperature_2m)}<small>°</small><\/div>
       <div class="drive">${timeLine}${miLine?(' · '+miLine):''}<\/div>
