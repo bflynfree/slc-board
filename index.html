@@ -257,7 +257,7 @@
     <span class="credit">Created By Austin Platt</span>
     <span id="clock">—</span>
     <span id="status"></span>
-    <span class="flash-key" id="flashKey"><span class="y" id="flashY">Caution Wind over 35 mph, gusts over 45 mph or National Weather Advisory</span><span class="sep" id="flashSep"> · </span><span class="r" id="flashR">Extreme Caution No LCV Consistent Winds over 45 mph Low visibility or Snow Ice Accumulation</span></span>
+    <span class="flash-key" id="flashKey"><span class="y" id="flashY">Caution Wind over 35 mph, gusts over 45 mph or National Weather Advisory</span><span class="sep" id="flashSep"> · </span><span class="r" id="flashR">Extreme Caution No LCV Consistent Winds over 45 mph</span></span>
   </footer>
 </div>
 
@@ -392,11 +392,15 @@ function radarLabel(ts){
 async function loadRadar(){
   try{
     if(!map || typeof L === 'undefined') return;
-    const j = await fetchT('https://api.rainviewer.com/public/weather-maps.json', 12000);
-    const host = j.host || 'https://tilecache.rainviewer.com';
-    const past = (j.radar && j.radar.past) ? j.radar.past.slice() : [];
-    if(!past.length) return;
-    radarFrames = past.sort((a,b)=>a.time-b.time);
+    let j = null;
+    try{ j = await fetchT('https://api.librewxr.net/public/weather-maps.json', 12000); }catch(e){}
+    if(!j || !j.radar) j = await fetchT('https://api.rainviewer.com/public/weather-maps.json', 12000);
+    const host = j.host || 'https://api.librewxr.net';
+    const past = ((j.radar && j.radar.past) ? j.radar.past : []).map(f=>({...f, forecast:false}));
+    const nowcast = ((j.radar && j.radar.nowcast) ? j.radar.nowcast : []).map(f=>({...f, forecast:true}));
+    const frames = past.concat(nowcast).sort((a,b)=>a.time-b.time);
+    if(!frames.length) return;
+    radarFrames = frames;
     radarLayers.forEach(ly=>{ try{ map.removeLayer(ly); }catch(e){} });
     radarLayers = radarFrames.map(f => L.tileLayer(
       host + f.path + '/256/{z}/{x}/{y}/2/1_1.png',
@@ -419,7 +423,7 @@ function showRadarFrame(i){
   const f = radarFrames[i];
   const el = document.getElementById('radarClock');
   if(el && f){
-    el.textContent = `Radar ${i+1}/${radarFrames.length} · ${radarLabel(f.time)}`;
+    el.textContent = `${f.forecast?'Forecast':'Radar'} ${i+1}/${radarFrames.length} · ${radarLabel(f.time)}`;
   }
 }
 
@@ -675,22 +679,24 @@ async function weather(){
 
 function loadWxCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v9')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v10')||'null');
     if(!j || Date.now()-j.ts > 60*60*1000) return null;
     return j.cards;
   }catch(e){ return null; }
 }
 function saveWxCache(cards){
-  try{ localStorage.setItem('slc-wx-cache-v9', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
+  try{ localStorage.setItem('slc-wx-cache-v10', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
 }
 function codeFromText(t){
   t=(t||'').toLowerCase();
-  if(t.includes('thunder')) return 95;
-  if(t.includes('snow')) return 73;
-  if(t.includes('rain')||t.includes('shower')) return 63;
-  if(t.includes('fog')) return 45;
-  if(t.includes('cloud')) return 3;
-  if(t.includes('sun')||t.includes('clear')) return 0;
+  const parts = t.split(/\bthen\b/).map(s=>s.trim()).filter(Boolean);
+  const main = parts.length>1 ? parts[parts.length-1] : t;
+  if(main.includes('thunder')) return 95;
+  if(main.includes('snow')) return 73;
+  if(main.includes('rain')||main.includes('shower')) return 63;
+  if(main.includes('fog')) return 45;
+  if(main.includes('cloud')) return 3;
+  if(main.includes('sun')||main.includes('clear')) return 0;
   return 2;
 }
 async function nwsAlert(p){
@@ -784,7 +790,7 @@ function paintWx(cards){
     for(let i=1;i<names.length;i++){
       const near = byName[names[i-1]], far = byName[names[i]];
       if(!near || !far || !near.j || !far.j) continue;
-      const nearRed = near.spd>45 || (near.rw && ((near.rw.snow||0)>0 || (near.rw.ice||0)>0 || (near.rw.vis!=null && near.rw.vis<1000)));
+      const nearRed = near.spd>45;
       const nearYellow = !nearRed && (near.spd>35 || near.gst>=45 || near.official);
       if(nearRed){
         far.spd = Math.max(far.spd, near.spd);
@@ -815,7 +821,7 @@ function paintWx(cards){
     const nws = !!b.official;
     const snowIce = rw && ((rw.snow||0)>=0.1 || (rw.ice||0)>=0.01);
     const lowVis = rw && rw.vis!=null && rw.vis<1000;
-    const windHigh = b.spd>45 || snowIce || lowVis;
+    const windHigh = b.spd>45;
     const windCaution = !windHigh && (b.spd>35 || b.gst>=45 || nws);
     const windAdv = windHigh;
     const eta = driveFor(b.p.name);
