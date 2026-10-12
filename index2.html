@@ -392,11 +392,15 @@ function radarLabel(ts){
 async function loadRadar(){
   try{
     if(!map || typeof L === 'undefined') return;
-    const j = await fetchT('https://api.rainviewer.com/public/weather-maps.json', 12000);
-    const host = j.host || 'https://tilecache.rainviewer.com';
-    const past = (j.radar && j.radar.past) ? j.radar.past.slice() : [];
-    if(!past.length) return;
-    radarFrames = past.sort((a,b)=>a.time-b.time);
+    let j = null;
+    try{ j = await fetchT('https://api.librewxr.net/public/weather-maps.json', 12000); }catch(e){}
+    if(!j || !j.radar) j = await fetchT('https://api.rainviewer.com/public/weather-maps.json', 12000);
+    const host = j.host || 'https://api.librewxr.net';
+    const past = ((j.radar && j.radar.past) ? j.radar.past : []).map(f=>({...f, forecast:false}));
+    const nowcast = ((j.radar && j.radar.nowcast) ? j.radar.nowcast : []).map(f=>({...f, forecast:true}));
+    const frames = past.concat(nowcast).sort((a,b)=>a.time-b.time);
+    if(!frames.length) return;
+    radarFrames = frames;
     radarLayers.forEach(ly=>{ try{ map.removeLayer(ly); }catch(e){} });
     radarLayers = radarFrames.map(f => L.tileLayer(
       host + f.path + '/256/{z}/{x}/{y}/2/1_1.png',
@@ -419,7 +423,7 @@ function showRadarFrame(i){
   const f = radarFrames[i];
   const el = document.getElementById('radarClock');
   if(el && f){
-    el.textContent = `Radar ${i+1}/${radarFrames.length} · ${radarLabel(f.time)}`;
+    el.textContent = `${f.forecast?'Forecast':'Radar'} ${i+1}/${radarFrames.length} · ${radarLabel(f.time)}`;
   }
 }
 
