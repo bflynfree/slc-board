@@ -16,6 +16,7 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;background:#050b14;color:var(--txt);font-family:Roboto,system-ui,sans-serif;touch-action:manipulation}
+  body.forecast, body.forecast .board{background:#3a2a10}
   body{
     height:100vh;
     background:linear-gradient(#07121f,#050b14);
@@ -23,7 +24,7 @@
   .board{
     height:100vh;width:100%;max-width:100vw;overflow:hidden;
     display:grid;
-    grid-template-rows:1fr auto 2px;
+    grid-template-rows:1fr auto;
     padding:6px 10px 6px;
     gap:4px;
   }
@@ -35,7 +36,7 @@
   }
   .map-wrap{grid-column:2 / 10;grid-row:1 / 6;position:relative;min-height:0;height:100%;overflow:hidden}
   .wx-grid{display:contents}
-  .wx{height:100%;min-height:0}
+  .wx{height:100%;min-height:72px}
   .mast{
     display:flex;align-items:center;justify-content:space-between;gap:12px;
     min-height:42px;
@@ -47,7 +48,12 @@
   }
   .mast-right{text-align:right;font-size:12px;color:var(--dim);line-height:1.35}
   .mast-right b{color:#fff}
-  #clock{font-family:Orbitron,sans-serif;color:#fff;letter-spacing:.03em;font-size:12px;text-align:center;line-height:1}
+  #clock{
+    position:absolute;top:10px;right:10px;z-index:500;
+    background:rgba(11,28,48,.88);border:1px solid #1e4a72;border-radius:4px;
+    padding:4px 8px;font-size:11px;color:#fff;pointer-events:none;
+    font-family:Orbitron,sans-serif;letter-spacing:.03em;text-align:center;line-height:1.2;
+  }
   .eta-wrap{display:flex;flex-direction:column;gap:5px;min-height:0;min-width:0;overflow:hidden}
   .eta-head{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
   .traffic-row{
@@ -61,8 +67,9 @@
     background:#0a2033;
     position:relative;
   }
+  #map.forecast{border-color:#ffb74d;box-shadow:0 0 20px rgba(255,183,77,.35)}
   #radarClock{
-    position:absolute;top:10px;right:10px;z-index:500;
+    position:absolute;top:38px;right:10px;z-index:500;
     background:rgba(11,28,48,.88);border:1px solid #1e4a72;border-radius:4px;
     padding:4px 8px;font-size:11px;color:#eaf6ff;pointer-events:none;
     font-family:Orbitron,sans-serif;letter-spacing:.04em;
@@ -209,8 +216,12 @@
   .wind-arrow{background:none;border:none}
   .wind-arrow div{font-size:16px;font-weight:800;line-height:1;text-align:center;text-shadow:0 0 3px #000}
   .wind-arrow span{display:block;font-size:8px;transform:rotate(0deg)}
-  footer{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--dim);font-size:12px;line-height:1;height:100%;padding:0;text-align:center;overflow:hidden}
-  footer .credit{color:var(--dim);letter-spacing:0;font-family:inherit;font-size:12px;font-weight:400;text-shadow:none}
+  footer{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;color:var(--dim);font-size:12px;line-height:1;height:18px;padding:0 8px;overflow:hidden}
+  footer .forecast-tag{justify-self:end;color:#ffb74d;font-weight:700;letter-spacing:.08em;display:none;white-space:nowrap}
+  body.forecast footer .forecast-tag{display:inline}
+  footer .left{display:flex;align-items:center;gap:10px;justify-self:start}
+  footer .credit, #status{font-family:Roboto,sans-serif;font-weight:400;letter-spacing:0;font-size:10px;color:var(--dim);text-shadow:none;margin:0}
+  footer .flash-key{justify-self:center}
   footer .flash-key{color:var(--dim);font-size:12px}
   footer .flash-key .y{color:#ffcc80}
   footer .flash-key .r{color:#ef9a9a}
@@ -240,6 +251,7 @@
   <div class="layout">
     <div class="map-wrap">
       <div id="map"></div>
+      <div id="clock">Utah time</div>
       <div id="radarClock">Radar loop —</div>
       <div id="mapKey">
         <div class="row"><b>Rain</b></div>
@@ -254,10 +266,9 @@
     <div id="joke"><div class="jh">DAILY JOKE <span class="jsrc" id="jokeSrc"></span></div><div id="jokeText">…</div></div>
   </div>
   <footer>
-    <span class="credit">Created By Austin Platt</span>
-    <span id="clock">—</span>
-    <span id="status"></span>
+    <span class="left"><span class="credit">Created By Austin Platt</span><span id="status"></span></span>
     <span class="flash-key" id="flashKey"><span class="y" id="flashY">Caution Wind over 35 mph, gusts over 45 mph or National Weather Advisory</span><span class="sep" id="flashSep"> · </span><span class="r" id="flashR">Extreme Caution No LCV Consistent Winds over 45 mph</span></span>
+    <span class="forecast-tag">Forecast</span>
   </footer>
 </div>
 
@@ -317,8 +328,8 @@ function initMap(){
     dragging:false, touchZoom:false, scrollWheelZoom:false,
     doubleClickZoom:false, boxZoom:false, keyboard:false
   });
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom:18, attribution:'OSM'
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom:18, attribution:'CARTO', subdomains:'abcd'
   }).addTo(map);
   centerOnSLC();
   setTimeout(()=>{ try{ map.invalidateSize(); centerOnSLC(); }catch(e){} }, 400);
@@ -380,13 +391,20 @@ let radarTimer = null;
 let radarFrames = [];
 let radarIdx = 0;
 
+function utahTime(d, withDate){
+  const opt = withDate
+    ? {weekday:'short', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', second:'2-digit'}
+    : {hour:'numeric', minute:'2-digit', second:'2-digit'};
+  return d.toLocaleString('en-US', opt) + ' MST';
+}
+function mstParts(d){ return utahTime(d, true); }
+function mstShort(d){
+  return d.toLocaleString('en-US',{
+    month:'short', day:'numeric', hour:'numeric', minute:'2-digit'
+  }) + ' MST';
+}
 function radarLabel(ts){
-  return new Date(ts*1000).toLocaleString('en-US',{
-    timeZone:'America/Denver',
-    month:'short', day:'numeric',
-    hour:'numeric', minute:'2-digit',
-    timeZoneName:'short'
-  });
+  return mstShort(new Date(ts*1000));
 }
 
 async function loadRadar(){
@@ -421,6 +439,9 @@ function showRadarFrame(i){
   radarLayers.forEach((ly, idx) => ly.setOpacity(idx===i ? 0.65 : 0));
   radarLayer = radarLayers[i];
   const f = radarFrames[i];
+  const mapEl = document.getElementById('map');
+  if(mapEl) mapEl.classList.toggle('forecast', !!(f && f.forecast));
+  document.body.classList.toggle('forecast', !!(f && f.forecast));
   const el = document.getElementById('radarClock');
   if(el && f){
     el.textContent = `${f.forecast?'Forecast':'Radar'} ${i+1}/${radarFrames.length} · ${radarLabel(f.time)}`;
@@ -853,12 +874,7 @@ function paintWx(cards){
 }
 
 function tick(){
-  document.getElementById('clock').textContent = new Date().toLocaleString('en-US',{
-    timeZone:'America/Denver',
-    weekday:'short', month:'short', day:'numeric', year:'numeric',
-    hour:'numeric', minute:'2-digit', second:'2-digit',
-    timeZoneName:'short'
-  });
+  document.getElementById('clock').textContent = utahTime(new Date(), true);
 }
 setInterval(tick,1000); tick();
 
@@ -928,7 +944,8 @@ async function loadJoke(){
 }
 
 async function refreshAll(){
-  document.getElementById('status').textContent = ' Updating…';
+  const status = document.getElementById('status');
+  if(status) status.textContent = ' Updating…';
   try{ await Promise.all([
     routes().catch(()=>paintFallbackTimes()),
     weather().catch(()=>{}),
@@ -937,10 +954,8 @@ async function refreshAll(){
   try{ await loadRadar(); }catch(e){}
   try{ await loadJoke(); }catch(e){}
   try{ await loadWindArrows(); }catch(e){}
-  const when = new Date().toLocaleString('en-US',{
-    timeZone:'America/Denver', hour:'numeric', minute:'2-digit', second:'2-digit', timeZoneName:'short'
-  });
-  document.getElementById('status').textContent = 'Updated '+when;
+  const when = utahTime(new Date(), false);
+  if(status) status.textContent = 'Updated '+when;
 }
 
 let windLayer = null;
