@@ -219,7 +219,8 @@
   footer{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;color:var(--dim);font-size:12px;line-height:1;height:18px;padding:0 8px;overflow:hidden}
   footer .forecast-tag{justify-self:end;color:#ffb74d;font-weight:700;letter-spacing:.08em;display:none;white-space:nowrap}
   body.forecast footer .forecast-tag{display:inline}
-  footer .credit{justify-self:start;font-family:Roboto,sans-serif;font-weight:400;letter-spacing:0;font-size:10px;color:var(--dim);text-shadow:none;margin:0}
+  footer .left{display:flex;align-items:center;gap:10px;justify-self:start}
+  footer .credit, #status{font-family:Roboto,sans-serif;font-weight:400;letter-spacing:0;font-size:10px;color:var(--dim);text-shadow:none;margin:0}
   footer .flash-key{justify-self:center}
   footer .flash-key{color:var(--dim);font-size:12px}
   footer .flash-key .y{color:#ffcc80}
@@ -250,7 +251,7 @@
   <div class="layout">
     <div class="map-wrap">
       <div id="map"></div>
-      <div id="clock">—</div>
+      <div id="clock">Utah time</div>
       <div id="radarClock">Radar loop —</div>
       <div id="mapKey">
         <div class="row"><b>Rain</b></div>
@@ -265,10 +266,9 @@
     <div id="joke"><div class="jh">DAILY JOKE <span class="jsrc" id="jokeSrc"></span></div><div id="jokeText">…</div></div>
   </div>
   <footer>
-    <span class="credit">Created By Austin Platt</span>
+    <span class="left"><span class="credit">Created By Austin Platt</span><span id="status"></span></span>
     <span class="flash-key" id="flashKey"><span class="y" id="flashY">Caution Wind over 35 mph, gusts over 45 mph or National Weather Advisory</span><span class="sep" id="flashSep"> · </span><span class="r" id="flashR">Extreme Caution No LCV Consistent Winds over 45 mph</span></span>
     <span class="forecast-tag">Forecast</span>
-    <span id="status" style="display:none"></span>
   </footer>
 </div>
 
@@ -328,8 +328,8 @@ function initMap(){
     dragging:false, touchZoom:false, scrollWheelZoom:false,
     doubleClickZoom:false, boxZoom:false, keyboard:false
   });
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom:18, attribution:'OSM'
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom:18, attribution:'Esri'
   }).addTo(map);
   centerOnSLC();
   setTimeout(()=>{ try{ map.invalidateSize(); centerOnSLC(); }catch(e){} }, 400);
@@ -391,13 +391,20 @@ let radarTimer = null;
 let radarFrames = [];
 let radarIdx = 0;
 
+function utahTime(d, withDate){
+  const opt = withDate
+    ? {weekday:'short', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', second:'2-digit'}
+    : {hour:'numeric', minute:'2-digit', second:'2-digit'};
+  return d.toLocaleString('en-US', opt) + ' MST';
+}
+function mstParts(d){ return utahTime(d, true); }
+function mstShort(d){
+  return d.toLocaleString('en-US',{
+    month:'short', day:'numeric', hour:'numeric', minute:'2-digit'
+  }) + ' MST';
+}
 function radarLabel(ts){
-  return new Date(ts*1000).toLocaleString('en-US',{
-    timeZone:'America/Denver',
-    month:'short', day:'numeric',
-    hour:'numeric', minute:'2-digit',
-    timeZoneName:'short'
-  });
+  return mstShort(new Date(ts*1000));
 }
 
 async function loadRadar(){
@@ -867,12 +874,7 @@ function paintWx(cards){
 }
 
 function tick(){
-  document.getElementById('clock').textContent = new Date().toLocaleString('en-US',{
-    timeZone:'America/Denver',
-    weekday:'short', month:'short', day:'numeric', year:'numeric',
-    hour:'numeric', minute:'2-digit', second:'2-digit',
-    timeZoneName:'short'
-  });
+  document.getElementById('clock').textContent = utahTime(new Date(), true);
 }
 setInterval(tick,1000); tick();
 
@@ -952,9 +954,7 @@ async function refreshAll(){
   try{ await loadRadar(); }catch(e){}
   try{ await loadJoke(); }catch(e){}
   try{ await loadWindArrows(); }catch(e){}
-  const when = new Date().toLocaleString('en-US',{
-    timeZone:'America/Denver', hour:'numeric', minute:'2-digit', second:'2-digit', timeZoneName:'short'
-  });
+  const when = utahTime(new Date(), false);
   if(status) status.textContent = 'Updated '+when;
 }
 
