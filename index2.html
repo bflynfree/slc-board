@@ -257,7 +257,7 @@
     <span class="credit">Created By Austin Platt</span>
     <span id="clock">—</span>
     <span id="status"></span>
-    <span class="flash-key" id="flashKey"><span class="y" id="flashY">Caution Wind over 35 mph, gusts over 45 mph or National Weather Advisory</span><span class="sep" id="flashSep"> · </span><span class="r" id="flashR">Extreme Caution No LCV Consistent Winds over 45 mph Low visibility or Snow Ice Accumulation</span></span>
+    <span class="flash-key" id="flashKey"><span class="y" id="flashY">Caution Wind over 35 mph, gusts over 45 mph or National Weather Advisory</span><span class="sep" id="flashSep"> · </span><span class="r" id="flashR">Extreme Caution No LCV Consistent Winds over 45 mph</span></span>
   </footer>
 </div>
 
@@ -790,7 +790,7 @@ function paintWx(cards){
     for(let i=1;i<names.length;i++){
       const near = byName[names[i-1]], far = byName[names[i]];
       if(!near || !far || !near.j || !far.j) continue;
-      const nearRed = near.spd>45 || (near.rw && ((near.rw.snow||0)>0 || (near.rw.ice||0)>0 || (near.rw.vis!=null && near.rw.vis<1000)));
+      const nearRed = near.spd>45;
       const nearYellow = !nearRed && (near.spd>35 || near.gst>=45 || near.official);
       if(nearRed){
         far.spd = Math.max(far.spd, near.spd);
@@ -821,7 +821,7 @@ function paintWx(cards){
     const nws = !!b.official;
     const snowIce = rw && ((rw.snow||0)>=0.1 || (rw.ice||0)>=0.01);
     const lowVis = rw && rw.vis!=null && rw.vis<1000;
-    const windHigh = b.spd>45 || snowIce || lowVis;
+    const windHigh = b.spd>45;
     const windCaution = !windHigh && (b.spd>35 || b.gst>=45 || nws);
     const windAdv = windHigh;
     const eta = driveFor(b.p.name);
