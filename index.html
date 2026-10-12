@@ -535,20 +535,21 @@ async function loadRouteWinds(){
 }
 function loadWindCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v8')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v9')||'null');
     if(j && j.ts && Date.now()-j.ts < 2*60*60*1000) return j.rows;
   }catch(e){}
   return null;
 }
 function saveWindCache(){
-  try{ localStorage.setItem('slc-wind-cache-v8', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
+  try{ localStorage.setItem('slc-wind-cache-v9', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
 }
 
 const CORRIDORS = [
   ['Burley, ID', 'Mountain Home, ID'],
   ['Idaho Falls, ID', 'Dubois, ID', 'Lima, MT'],
   ['Rock Springs, WY', 'Rawlins, WY'],
-  ['Grand Junction, CO', 'Dove Creek, CO'],
+  ['Grand Junction, CO'],
+  ['Dove Creek, CO'],
   ['Beaver, UT', 'St. George, UT'],
   ['Carlin, NV']
 ];
@@ -613,13 +614,13 @@ function applyLiveTime(d, r){
 const ROUTE_REFRESH_MS = 2*60*60*1000;
 function loadRouteCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-route-cache-v4')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-route-cache-v6')||'null');
     if(j && j.ts && (Date.now()-j.ts) < ROUTE_REFRESH_MS && j.rows) return j.rows;
   }catch(e){}
   return null;
 }
 function saveRouteCache(rows){
-  try{ localStorage.setItem('slc-route-cache-v4', JSON.stringify({ts:Date.now(), rows})); }catch(e){}
+  try{ localStorage.setItem('slc-route-cache-v6', JSON.stringify({ts:Date.now(), rows})); }catch(e){}
 }
 
 let LAST_ETA = [];
@@ -634,7 +635,7 @@ async function routes(){
     const d = DEST[i];
     let raw = cached && cached[i] ? cached[i] : null;
     if(!raw){
-      const live = await osrmCorridor(CORRIDORS.find(c => c.includes(d.name)) || [d.name]);
+      const live = await osrmCorridor([d.name]);
       Object.keys(live).forEach(name => {
         const idx = DEST.findIndex(x => x.name===name);
         if(idx>=0) rows[idx] = live[name];
