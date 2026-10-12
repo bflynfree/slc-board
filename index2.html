@@ -679,22 +679,24 @@ async function weather(){
 
 function loadWxCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v9')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v10')||'null');
     if(!j || Date.now()-j.ts > 60*60*1000) return null;
     return j.cards;
   }catch(e){ return null; }
 }
 function saveWxCache(cards){
-  try{ localStorage.setItem('slc-wx-cache-v9', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
+  try{ localStorage.setItem('slc-wx-cache-v10', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
 }
 function codeFromText(t){
   t=(t||'').toLowerCase();
-  if(t.includes('thunder')) return 95;
-  if(t.includes('snow')) return 73;
-  if(t.includes('rain')||t.includes('shower')) return 63;
-  if(t.includes('fog')) return 45;
-  if(t.includes('cloud')) return 3;
-  if(t.includes('sun')||t.includes('clear')) return 0;
+  const parts = t.split(/\bthen\b/).map(s=>s.trim()).filter(Boolean);
+  const main = parts.length>1 ? parts[parts.length-1] : t;
+  if(main.includes('thunder')) return 95;
+  if(main.includes('snow')) return 73;
+  if(main.includes('rain')||main.includes('shower')) return 63;
+  if(main.includes('fog')) return 45;
+  if(main.includes('cloud')) return 3;
+  if(main.includes('sun')||main.includes('clear')) return 0;
   return 2;
 }
 async function nwsAlert(p){
