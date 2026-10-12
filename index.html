@@ -16,6 +16,7 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;background:#050b14;color:var(--txt);font-family:Roboto,system-ui,sans-serif;touch-action:manipulation}
+  body.forecast, body.forecast .board{background:#3a2a10}
   body{
     height:100vh;
     background:linear-gradient(#07121f,#050b14);
@@ -61,6 +62,7 @@
     background:#0a2033;
     position:relative;
   }
+  #map.forecast{border-color:#ffb74d;box-shadow:0 0 20px rgba(255,183,77,.35)}
   #radarClock{
     position:absolute;top:10px;right:10px;z-index:500;
     background:rgba(11,28,48,.88);border:1px solid #1e4a72;border-radius:4px;
@@ -209,7 +211,9 @@
   .wind-arrow{background:none;border:none}
   .wind-arrow div{font-size:16px;font-weight:800;line-height:1;text-align:center;text-shadow:0 0 3px #000}
   .wind-arrow span{display:block;font-size:8px;transform:rotate(0deg)}
-  footer{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--dim);font-size:12px;line-height:1;height:100%;padding:0;text-align:center;overflow:hidden}
+  footer{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--dim);font-size:12px;line-height:1;height:100%;padding:0 8px;text-align:center;overflow:hidden;position:relative}
+  footer .forecast-tag{position:absolute;right:8px;color:#ffb74d;font-weight:700;letter-spacing:.08em;display:none}
+  body.forecast footer .forecast-tag{display:inline}
   footer .credit{color:var(--dim);letter-spacing:0;font-family:inherit;font-size:12px;font-weight:400;text-shadow:none}
   footer .flash-key{color:var(--dim);font-size:12px}
   footer .flash-key .y{color:#ffcc80}
@@ -258,6 +262,7 @@
     <span id="clock">—</span>
     <span id="status"></span>
     <span class="flash-key" id="flashKey"><span class="y" id="flashY">Caution Wind over 35 mph, gusts over 45 mph or National Weather Advisory</span><span class="sep" id="flashSep"> · </span><span class="r" id="flashR">Extreme Caution No LCV Consistent Winds over 45 mph</span></span>
+    <span class="forecast-tag">Forecast</span>
   </footer>
 </div>
 
@@ -421,6 +426,9 @@ function showRadarFrame(i){
   radarLayers.forEach((ly, idx) => ly.setOpacity(idx===i ? 0.65 : 0));
   radarLayer = radarLayers[i];
   const f = radarFrames[i];
+  const mapEl = document.getElementById('map');
+  if(mapEl) mapEl.classList.toggle('forecast', !!(f && f.forecast));
+  document.body.classList.toggle('forecast', !!(f && f.forecast));
   const el = document.getElementById('radarClock');
   if(el && f){
     el.textContent = `${f.forecast?'Forecast':'Radar'} ${i+1}/${radarFrames.length} · ${radarLabel(f.time)}`;
