@@ -206,7 +206,9 @@
   @keyframes boltflash{0%,100%{opacity:.35}50%{opacity:1}}
   .wxico .puff{animation:puff 2.4s ease-in-out infinite}
   @keyframes puff{0%,100%{transform:translateX(0)}50%{transform:translateX(1.5px)}}
-  .hot{color:var(--hot)}
+  .wind-arrow{background:none;border:none}
+  .wind-arrow div{font-size:16px;font-weight:800;line-height:1;text-align:center;text-shadow:0 0 3px #000}
+  .wind-arrow span{display:block;font-size:8px;transform:rotate(0deg)}
   footer{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--dim);font-size:12px;line-height:1;height:100%;padding:0;text-align:center;overflow:hidden}
   footer .credit{color:var(--dim);letter-spacing:0;font-family:inherit;font-size:12px;font-weight:400;text-shadow:none}
   footer .flash-key{color:var(--dim);display:none;font-size:12px}
@@ -254,7 +256,7 @@
     <span class="credit">Created By Austin Platt</span>
     <span id="clock">—</span>
     <span id="status"></span>
-    <span class="flash-key" id="flashKey"><span class="y">Yellow = Winds 35+ mph or National Weather Service Warning</span> · <span class="r">Red = Winds 45+ MPH No LCV / Over Length</span></span>
+    <span class="flash-key" id="flashKey"><span class="y">Yellow = Caution Wind over 35 mph, gusts over 45 mph or National Weather Advisory</span> · <span class="r">Red = Extreme Caution No LCV Consistent Winds over 45 mph Low visibility or Snow Ice Accumulation</span></span>
   </footer>
 </div>
 
@@ -325,7 +327,7 @@ function initMap(){
 function centerOnSLC(){
   if(!map) return;
   map.invalidateSize();
-  map.setView([ORIGIN.lat, ORIGIN.lon], 5.7, {animate:false});
+  map.setView([ORIGIN.lat, ORIGIN.lon], 6.7, {animate:false});
   map.panBy([0, 20], {animate:false});
 }
 
@@ -671,13 +673,13 @@ async function weather(){
 
 function loadWxCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v7')||'null');
+    const j = JSON.parse(localStorage.getItem('slc-wx-cache-v8')||'null');
     if(!j || Date.now()-j.ts > 60*60*1000) return null;
     return j.cards;
   }catch(e){ return null; }
 }
 function saveWxCache(cards){
-  try{ localStorage.setItem('slc-wx-cache-v7', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
+  try{ localStorage.setItem('slc-wx-cache-v8', JSON.stringify({ts:Date.now(), cards})); }catch(e){}
 }
 function codeFromText(t){
   t=(t||'').toLowerCase();
@@ -703,12 +705,13 @@ async function nwsForecast(p){
     const periods = (fc.properties.periods||[]).slice(0,3);
     const now = periods[0] || {};
     const spd = now.windSpeed ? Math.max(...(String(now.windSpeed).match(/\d+/g)||['0']).map(Number)) : 0;
-    let gst = spd;
+    let gst = spd, dir = 0;
     try{
       const grid = pt.properties.forecastGridData ? await fetchT(pt.properties.forecastGridData, 8000, {Accept:'application/geo+json'}) : null;
       const g = (grid && grid.properties) || {};
       const gspd = Math.round(toMph(firstGrid(g.windSpeed), g.windSpeed && g.windSpeed.uom));
       const ggst = Math.round(toMph(firstGrid(g.windGust) || firstGrid(g.windSpeed), (g.windGust&&g.windGust.uom) || (g.windSpeed&&g.windSpeed.uom)));
+      dir = Math.round(firstGrid(g.windDirection) || 0);
       if(ggst) gst = Math.max(gst, ggst);
     }catch(e){}
     const gmatch = String(now.detailedForecast||'').match(/gusts?(?: as high as| up to| to)?\s*(\d+)/i);
@@ -721,7 +724,8 @@ async function nwsForecast(p){
         rain: 0,
         snowfall: 0,
         wind_speed_10m: spd,
-        wind_gusts_10m: gst
+        wind_gusts_10m: gst,
+        wind_direction_10m: dir
       },
       daily:{
         time: periods.map(x=>x.startTime.slice(0,10)),
@@ -774,8 +778,8 @@ function paintWx(cards){
     for(let i=1;i<names.length;i++){
       const near = byName[names[i-1]], far = byName[names[i]];
       if(!near || !far || !near.j || !far.j) continue;
-      const nearRed = near.spd>45 || near.gst>45 || (near.rw && ((near.rw.snow||0)>0 || (near.rw.ice||0)>0 || (near.rw.vis!=null && near.rw.vis<1000)));
-      const nearYellow = !nearRed && (near.spd>=35 || near.gst>=35 || near.official);
+      const nearRed = near.spd>45 || (near.rw && ((near.rw.snow||0)>0 || (near.rw.ice||0)>0 || (near.rw.vis!=null && near.rw.vis<1000)));
+      const nearYellow = !nearRed && (near.spd>35 || near.gst>45 || near.official);
       if(nearRed){
         far.spd = Math.max(far.spd, near.spd);
         far.gst = Math.max(far.gst, near.gst);
@@ -803,19 +807,19 @@ function paintWx(cards){
     const hot = c.temperature_2m>=95;
     const rw = b.rw;
     const nws = !!b.official;
-    const windHigh = b.spd>45 || b.gst>45;
-    const windCaution = !windHigh && (b.spd>=35 || b.gst>=35);
     const snowIce = rw && ((rw.snow||0)>0 || (rw.ice||0)>0);
     const lowVis = rw && rw.vis!=null && rw.vis<1000;
-    const windAdv = !!(windHigh || snowIce || lowVis);
+    const windHigh = b.spd>45 || snowIce || lowVis;
+    const windCaution = !windHigh && (b.spd>35 || b.gst>45 || nws);
+    const windAdv = windHigh;
     const eta = driveFor(b.p.name);
     const isHub = b.p.name === ORIGIN.name;
     const timeLine = isHub ? 'Origin' : (eta ? (eta.closed ? 'Road Closed?' : shortTime(eta.duration)) : '…');
     const miLine = isHub ? '' : (eta ? (eta.delayed && !eta.closed ? 'Check route' : (eta.distance!=null?fmtMi(eta.distance):'')) : '');
     const windPlace = (rw && rw.windLoc) || b.via || 'route';
     let flash='', windLabel = 'Clear';
-    if(windAdv){ flash='flash-red'; windLabel = 'NO LCV High Winds Along Route'; }
-    else if(windCaution || nws){ flash='flash-yellow'; windLabel = 'Caution · Winds 35+ mph'; }
+    if(windHigh){ flash='flash-red'; windLabel = 'Extreme Caution No LCV'; }
+    else if(windCaution){ flash='flash-yellow'; windLabel = 'Caution'; }
     return `<div class="wx ${flash}">
       <div class="name">${shortName(b.p.name)}<\/div>
       <div class="temp ${hot?'hot':''}">${Math.round(c.temperature_2m)}<small>°</small><\/div>
@@ -917,12 +921,49 @@ async function refreshAll(){
   try{ await loadRouteWinds(); }catch(e){}
   try{ await loadRadar(); }catch(e){}
   try{ await loadJoke(); }catch(e){}
+  try{ await loadWindArrows(); }catch(e){}
   const when = new Date().toLocaleString('en-US',{
     timeZone:'America/Denver', hour:'numeric', minute:'2-digit', second:'2-digit', timeZoneName:'short'
   });
   document.getElementById('status').textContent = 'Updated '+when;
 }
 
+let windLayer = null;
+function windColor(mph){
+  if(mph>=45) return '#ef5350';
+  if(mph>=35) return '#ffb74d';
+  return '#81c784';
+}
+function windArrowIcon(mph, dir){
+  const blow = (Number(dir)||0) + 180;
+  const c = windColor(mph);
+  return L.divIcon({
+    className:'wind-arrow',
+    html:`<div style="transform:rotate(${blow}deg);color:${c}">➤<span>${mph}</span></div>`,
+    iconSize:[28,28], iconAnchor:[14,14]
+  });
+}
+async function loadWindArrows(){
+  if(!map || typeof L === 'undefined') return;
+  const rows = (LAST_WX||[]).map(row=>{
+    const p = row.p || ALL.find(x=>x.name===row.name);
+    const c = row.j && row.j.current;
+    if(!p || !c) return null;
+    return {lat:p.lat, lon:p.lon, spd:Math.round(c.wind_speed_10m||0), gst:Math.round(c.wind_gusts_10m||0), dir:c.wind_direction_10m||0, name:p.name};
+  }).filter(Boolean);
+  if(rows.length) paintWindArrows(rows);
+}
+function paintWindArrows(rows){
+  if(!map || !rows) return;
+  if(windLayer){ try{ map.removeLayer(windLayer); }catch(e){} }
+  windLayer = L.layerGroup();
+  rows.forEach(r=>{
+    if(!r || r.spd==null) return;
+    const m = L.marker([r.lat, r.lon], {icon:windArrowIcon(r.spd, r.dir), interactive:false, keyboard:false});
+    m.addTo(windLayer);
+  });
+  windLayer.addTo(map);
+}
 (async()=>{
   try{ initMap(); }catch(e){
     document.getElementById('status').textContent = ' Map failed: '+e.message;
