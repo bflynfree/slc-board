@@ -878,10 +878,7 @@ function paintWx(cards){
 }
 
 function tick(){
-  const now = new Date();
-  document.getElementById('clock').textContent = utahTime(now, true);
-  const status = document.getElementById('status');
-  if(status && !status.dataset.hold) status.textContent = 'Updated ' + utahTime(now, false);
+  document.getElementById('clock').textContent = utahTime(new Date(), true);
 }
 setInterval(tick,1000); tick();
 
