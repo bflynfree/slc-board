@@ -248,6 +248,7 @@
 </style>
 </head>
 <body>
+<div id="burn"></div>
 <div class="board">
   <div class="layout">
     <div class="map-wrap">
@@ -1010,6 +1011,23 @@ function paintWindArrows(rows){
   await refreshAll();
   setInterval(refreshAll, 15*60*1000);
   setInterval(function(){ location.replace(location.pathname + '?v=' + Date.now()); }, 60*60*1000);
+})();
+(function burnProtect(){
+  const board = document.querySelector('.board');
+  const burn = document.getElementById('burn');
+  const shifts = [[0,0],[2,1],[1,-2],[-2,1],[-1,-1],[2,-1],[-2,-2],[1,2]];
+  let i = 0;
+  setInterval(function(){
+    i = (i+1) % shifts.length;
+    if(board) board.style.transform = 'translate('+shifts[i][0]+'px,'+shifts[i][1]+'px)';
+  }, 3*60*1000);
+  function blackout(){
+    if(!burn) return;
+    burn.classList.add('on');
+    setTimeout(function(){ burn.classList.remove('on'); }, 45000);
+  }
+  setTimeout(blackout, 60*60*1000);
+  setInterval(blackout, 60*60*1000);
 })();
 </script>
 </body>
