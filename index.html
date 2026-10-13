@@ -105,10 +105,11 @@
   .eta.closed{background:#2a1212}
   .eta .closed-tag{color:#ef9a9a;font-weight:800;font-size:10px;letter-spacing:.06em}
   #joke{
-    grid-column:9;grid-row:6;
-    background:var(--panel);border:1px solid var(--line);border-radius:6px;
-    padding:6px 7px;font-size:clamp(11px,1.3vh,16px);color:var(--txt);line-height:1.2;
-    min-width:0;min-height:0;overflow:hidden;
+    position:absolute;left:10px;bottom:10px;z-index:500;
+    width:240px;max-height:92px;
+    background:rgba(11,28,48,.9);border:1px solid #1e4a72;border-radius:4px;
+    padding:6px 7px;font-size:11px;color:#eaf6ff;line-height:1.2;
+    overflow:hidden;pointer-events:none;
   }
   #joke .jh{font-size:clamp(10px,1.1vh,14px);letter-spacing:.08em;color:var(--ice);font-family:Orbitron,sans-serif;margin-bottom:3px}
   #joke .jsrc{color:var(--dim);letter-spacing:0;font-family:Roboto,sans-serif;font-size:9px;margin-left:6px}
@@ -261,9 +262,9 @@
         <span class="scale snowscale"></span>
         <div class="ticks"><span>light</span><span>moderate</span><span>heavy</span></div>
       </div>
+      <div id="joke"><div class="jh">DAILY JOKE <span class="jsrc" id="jokeSrc"></span></div><div id="jokeText">…</div></div>
     </div>
     <div class="wx-grid" id="wxGrid">Loading…</div>
-    <div id="joke"><div class="jh">DAILY JOKE <span class="jsrc" id="jokeSrc"></span></div><div id="jokeText">…</div></div>
   </div>
   <footer>
     <span class="left"><span class="credit">Created By Austin Platt</span><span id="status"></span></span>
@@ -287,6 +288,7 @@ const DEST = [
   { name:'Dubois, ID',        lat:44.176298, lon:-112.230820, color:'#43a047', via:'I-15 N', fallback:{duration:15912, distance:429663} },
   { name:'Lima, MT',          lat:44.6369, lon:-112.5919, color:'#81c784', via:'I-15 N', fallback:{duration:19240, distance:498900} },
   { name:'Rock Springs, WY',  lat:41.586056, lon:-109.219454, color:'#ef5350', via:'I-80 E', fallback:{duration:11880, distance:305775} },
+  { name:'Wamsutter, WY',     lat:41.6678, lon:-107.9781, color:'#ec407a', via:'I-80 E', fallback:{duration:14880, distance:386000} },
   { name:'Rawlins, WY',       lat:41.790788, lon:-107.239176, color:'#ab47bc', via:'I-80 E', fallback:{duration:18108, distance:479547} },
   { name:'Grand Junction, CO',lat:39.0639, lon:-108.5506, color:'#42a5f5', via:'I-70 E', fallback:{duration:16800, distance:430000} },
   { name:'Dove Creek, CO',    lat:37.7638, lon:-108.9057, color:'#5c6bc0', via:'US-191', fallback:{duration:22863, distance:512205} },
@@ -303,6 +305,7 @@ const CARD_PLACES = [
   DEST.find(d=>d.name==='Carlin, NV'),
   ORIGIN,
   DEST.find(d=>d.name==='Rock Springs, WY'),
+  DEST.find(d=>d.name==='Wamsutter, WY'),
   DEST.find(d=>d.name==='Rawlins, WY'),
   DEST.find(d=>d.name==='Grand Junction, CO'),
   DEST.find(d=>d.name==='Dove Creek, CO'),
@@ -573,7 +576,7 @@ function saveWindCache(){
 const CORRIDORS = [
   ['Burley, ID', 'Mountain Home, ID'],
   ['Idaho Falls, ID', 'Dubois, ID', 'Lima, MT'],
-  ['Rock Springs, WY', 'Rawlins, WY'],
+  ['Rock Springs, WY', 'Wamsutter, WY', 'Rawlins, WY'],
   ['Grand Junction, CO'],
   ['Dove Creek, CO'],
   ['Beaver, UT', 'St. George, UT'],
