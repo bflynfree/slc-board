@@ -114,6 +114,30 @@
   #joke .jh{font-size:clamp(10px,1.1vh,14px);letter-spacing:.08em;color:var(--ice);font-family:Orbitron,sans-serif;margin-bottom:3px}
   #joke .jsrc{color:var(--dim);letter-spacing:0;font-family:Roboto,sans-serif;font-size:9px;margin-left:6px}
   #joke .jp{color:var(--dim);margin-top:3px}
+  #teamster{
+    position:absolute;left:10px;top:132px;z-index:500;
+    width:220px;max-height:88px;
+    background:rgba(11,28,48,.9);border:1px solid #1e4a72;border-radius:4px;
+    padding:6px 7px;font-size:11px;color:#eaf6ff;line-height:1.25;
+    overflow:hidden;pointer-events:none;
+  }
+  #teamster .th{font-size:10px;letter-spacing:.08em;color:#ffcc80;font-family:Orbitron,sans-serif;margin-bottom:3px}
+  #unionStrong{
+    position:absolute;left:10px;top:228px;z-index:500;
+    width:250px;max-height:170px;
+    background:rgba(11,28,48,.9);border:1px solid #1e4a72;border-radius:4px;
+    padding:6px 7px;font-size:11px;color:#eaf6ff;line-height:1.3;
+    overflow:hidden;pointer-events:none;
+  }
+  #unionStrong .th{font-size:10px;letter-spacing:.08em;color:#ffcc80;font-family:Orbitron,sans-serif;margin-bottom:3px}
+  #upsFacts{
+    position:absolute;right:10px;top:72px;z-index:500;
+    width:240px;max-height:88px;
+    background:rgba(11,28,48,.9);border:1px solid #1e4a72;border-radius:4px;
+    padding:6px 7px;font-size:11px;color:#eaf6ff;line-height:1.25;
+    overflow:hidden;pointer-events:none;
+  }
+  #upsFacts .th{font-size:10px;letter-spacing:.08em;color:#ffcc80;font-family:Orbitron,sans-serif;margin-bottom:3px}
   .eta .mi{font-size:10px;color:var(--dim);text-align:right}
   .wx-wrap{min-height:0;min-width:0;overflow:hidden}
   .sec{
@@ -255,6 +279,7 @@
       <div id="map"></div>
       <div id="clock">Utah time</div>
       <div id="radarClock">Radar loop —</div>
+      <div id="upsFacts"><div class="th">UPS FACTS</div><div id="upsFactsText">…</div></div>
       <div id="mapKey">
         <div class="row"><b>Rain</b></div>
         <span class="scale rainscale"></span>
@@ -263,6 +288,8 @@
         <span class="scale snowscale"></span>
         <div class="ticks"><span>light</span><span>moderate</span><span>heavy</span></div>
       </div>
+      <div id="teamster"><div class="th">TEAMSTERS</div><div id="teamsterText">…</div></div>
+      <div id="unionStrong"><div class="th">UNION STRONG!</div><div id="unionStrongText">…</div></div>
       <div id="joke"><div class="jh">DAD JOKE <span class="jsrc" id="jokeSrc"></span></div><div id="jokeText">…</div></div>
     </div>
     <div class="wx-grid" id="wxGrid">Loading…</div>
@@ -946,6 +973,197 @@ async function loadJoke(){
   }
   showJoke('Why did the scarecrow get promoted? He was outstanding in his field.','','on board');
 }
+const TEAMSTER_FACTS = [
+  'The International Brotherhood of Teamsters was founded in 1903.',
+  'Teamsters represent 1.2 million members in the U.S., Canada, and Puerto Rico.',
+  'UPS is the largest Teamsters employer, under a national master agreement.',
+  'The UPS National Master Agreement is the largest private-sector contract in North America.',
+  'The 2023 UPS contract was ratified by 86.3 percent of voting members.',
+  'That UPS deal covers more than 340,000 full- and part-time Teamsters.',
+  'Teamsters cover freight, package, warehouse, rail, airline, and public-sector jobs.',
+  'The union’s colors are black and gold.',
+  'Teamsters bargained the eight-hour day, overtime, and pension protections into freight contracts.',
+  'Local unions and joint councils bargain and enforce contracts close to the job.',
+  'Teamsters train stewards to enforce the contract on the dock and on the road.',
+  'A fair day’s work for a fair day’s pay is the union’s long-standing standard.',
+  'Teamsters pushed hours-of-service and fatigue rules to keep drivers safe.',
+  'The strike fund backs members when a contract fight goes the distance.',
+  'Teamsters apprenticeships train the next generation of drivers and mechanics.',
+  'Women Teamsters have their own conference and a growing share of the membership.',
+  'Sean O’Brien is the current Teamsters General President.',
+  'Teamsters freight contracts set the pattern for pay and benefits across trucking.',
+  'The union represents members in all 50 states, Canada, and Puerto Rico.',
+  'Teamsters won language that protects seniority on bids, layoffs, and recalls.',
+  'Health and welfare funds negotiated by Teamsters cover members and their families.',
+  'Teamsters organize the unorganized so one employer cannot undercut the rate.',
+  'The 2023 UPS agreement raised wages by $7.50 an hour over five years.',
+  'That same UPS deal added air conditioning in new package cars.',
+  'Martin Luther King Day became a paid UPS holiday in the 2023 contract.',
+  'The 2023 UPS deal ended a two-tier driver pay system.',
+  'Teamsters members vote on their contracts. The union does not impose them.',
+  'Joint councils coordinate locals so one city cannot be played against another.',
+  'Teamsters have divisions for freight, package, warehouse, rail, airline, and public service.',
+  'The union’s motto is still the same: solidarity gets the contract.'
+];
+const UNION_STRONG = [
+  'Do your own job. Leave the work of a member who is on break, off the clock, out sick, or in the grievance process for the person the company should have staffed.',
+  'Finish your own stops. A downed route gets a call-in, not your free overtime.',
+  'Take your break. Break time is contract time, even when the belt is backed up.',
+  'A downed member’s route stays down until the company fills it. One favor becomes the schedule.',
+  'Stay in your classification. Sorting, loading, or spotting for another job is that classification’s work.',
+  'When the crew stops for a safety or contract issue, stop with them.',
+  'Keep all work on the clock. Off-the-clock time is a gift to the company and a pay cut on the next bid.',
+  'A grievance needs harm. If the work got done, the company says there was none.',
+  'Seniority holds when the contract holds. The member who follows the book keeps the bid.',
+  'The member who hustles extra becomes management’s favorite and the crew’s problem.',
+  'Management times the person who worked through lunch, then expects that pace from everyone.',
+  'The member who covered the short crew becomes the reason the next person gets written up for refusing to.',
+  'Write it down. Date, time, who said what, and who saw it. A grievance without notes is a story.',
+  'File on time. Most contracts have a short window. Late is lost.',
+  'Safety is a contract issue. An unsafe truck, dock, or load is a grievance, not a favor you do the company.',
+  'Hours of service are law and contract. Keep dispatch inside them.',
+  'Pay your dues. The strike fund and the legal fund back you when it costs money to hold the line.',
+  'Read anything before you sign it. Take it to the steward first.',
+  'Equal treatment. If management bends a rule for one, it bends it for all, or it is a grievance.',
+  'A complaint is a feeling. A grievance cites an article.',
+  'Past practice matters. A sudden change from how the company has always done it is bargainable.',
+  'If they give a direct order outside your work, follow it under protest, note the time, and file.',
+  'One crew, one pace. The contract sets the speed, not the fastest person on the shift.',
+  'A favor to the company today is the expectation tomorrow.'
+];
+const UPS_FACTS = [
+  'UPS was founded on August 28, 1907, in Seattle, Washington.',
+  'James E. Casey and Claude Ryan started the company with a $100 loan.',
+  'The first name was the American Messenger Company.',
+  'They worked out of a cellar under a tavern.',
+  'The first deliveries were made on foot and by bicycle.',
+  'James Casey was 19 when he started the company.',
+  'In 1913 the company became Merchants Parcel Delivery.',
+  'The first truck was a converted Ford Model T in 1913.',
+  'The name United Parcel Service was first used in Oakland in 1919.',
+  'The whole company took the UPS name in 1925.',
+  'UPS brown comes from the color of Pullman railroad cars.',
+  'By the end of the 1920s UPS ran the West Coast.',
+  'Headquarters moved to New York City in 1930.',
+  'UPS reached all 48 contiguous states in 1975.',
+  'UPS entered Canada in 1975 and became international.',
+  'Headquarters moved to Greenwich, Connecticut, in 1975.',
+  'Headquarters moved to the Atlanta area in 1991.',
+  'Corporate headquarters is 55 Glenlake Parkway, Sandy Springs, Georgia.',
+  'UPS has about 460,000 employees worldwide.',
+  'UPS serves more than 200 countries and territories.',
+  'UPS reported $88.7 billion in revenue for 2025.',
+  'UPS moves about 20.8 million packages a day.',
+  'UPS is one of the largest package companies in the world by revenue.',
+  'The company purpose is “Moving our world forward by delivering what matters.”',
+  'The strategy line is Customer First. People Led. Innovation Driven.',
+  'UPS went public on November 10, 1999.',
+  'The ticker is UPS on the New York Stock Exchange.',
+  'The 1999 IPO raised $5.47 billion, the largest U.S. IPO at the time.',
+  'UPS bought Mail Boxes Etc. in 2001.',
+  'Mail Boxes Etc. became The UPS Store.',
+  'The UPS Store handles shipping, mailboxes, and small-business services.',
+  'UPS Airlines is one of the largest cargo airlines in the world.',
+  'UPS Airlines is based in Louisville, Kentucky.',
+  'Worldport in Louisville is the global air hub.',
+  'Worldport covers about 5.2 million square feet.',
+  'Worldport sorts more than 400,000 packages an hour.',
+  'About 300 flights a day use Worldport.',
+  'About 20,000 UPSers work in the Louisville area.',
+  'Worldport can reach most of the U.S. population within a four-hour flight.',
+  'The Louisville hub began sorting in 1982.',
+  'Worldport got its name in the 2002 expansion.',
+  'A second Worldport expansion finished in 2010.',
+  'UPS started in Europe in West Germany in 1976.',
+  'On the first day in Germany, 211 employees delivered 1,150 packages.',
+  'The Cologne/Bonn air hub is the largest UPS operation outside the U.S.',
+  'Cologne can sort about 190,000 packages an hour.',
+  'UPS has run in Mexico since 1991.',
+  'Carol Tomé is the chief executive officer.',
+  'The shield logo is one of the most recognized marks in delivery.',
+  'Package cars are still called package cars, not trucks, inside the company.',
+  'Drivers are taught a set delivery method, the same steps at every stop.',
+  'The brown package car is the public face of the company.',
+  'UPS runs ground, air, freight, and supply-chain services.',
+  'UPS Healthcare moves temperature-controlled medical shipments.',
+  'UPS Supply Chain Solutions handles freight and logistics beyond small packages.',
+  'Next Day Air, 2nd Day Air, and Ground are the core U.S. services.',
+  'UPS tracking numbers let a shipper follow a package from pickup to delivery.',
+  'The DIAD is the handheld drivers use for stops, signatures, and scans.',
+  'A preload loads the package car in route order before the driver leaves.',
+  'A hub sorts packages between trailers and aircraft.',
+  'A center is the local building drivers leave from.',
+  'Feeder drivers move trailers between hubs and centers.',
+  'Package drivers run the delivery and pickup routes.',
+  'Part-time preload and local sort are the entry jobs for most new hires.',
+  'Many full-time drivers started as part-timers and bid up.',
+  'Seniority decides bids, vacation, and layoff order under the contract.',
+  'More than 340,000 UPS workers are Teamsters.',
+  'The UPS National Master Agreement is the largest private-sector contract in North America.',
+  'The 2023 Teamsters contract runs five years.',
+  'That contract was ratified by 86.3 percent of voting members.',
+  'The 2023 deal raised wages by $7.50 an hour over the life of the contract.',
+  'The 2023 deal put air conditioning in new package cars.',
+  'Martin Luther King Day became a paid holiday in the 2023 contract.',
+  'Peak season is the holiday surge, roughly November through January.',
+  'Peak adds seasonal hires and extra air and ground volume.',
+  'A missed on-road commitment is a service failure the company tracks.',
+  'Drivers plan stops to cut left turns and back up less.',
+  'UPS studies routes so the car runs in a loop, not a zigzag.',
+  'The company founded the UPS Foundation for community giving.',
+  'Jim Casey believed in promotion from within.',
+  'For decades, managers came up from driver and hub jobs.',
+  'Employee ownership through stock was a Jim Casey idea long before the IPO.',
+  'UPS pilots are represented by the Independent Pilots Association.',
+  'Mechanics, feeders, and package drivers at UPS are largely Teamsters.',
+  'A package car route is bid work. It is not assigned at random.',
+  'Overtime rules, breaks, and start times are contract language, not favors.',
+  'A written warning at UPS is a record. Members answer it through the grievance steps.',
+  'The company measures stops per hour. The contract measures the work.',
+  'Air drivers and ground drivers can be different bids under the supplements.',
+  'Sleeper teams move freight overnight between hubs.',
+  'Rail is used for some long ground lanes to save driver hours.',
+  'International packages clear customs through UPS brokerage.',
+  'A hold for pickup lets a customer collect at a center or a UPS Store.',
+  'Access points are local shops that take UPS drop-offs and pickups.',
+  'My Choice is the UPS tool for delivery alerts and changes.',
+  'UPS Capital offers insurance beyond the standard declared value.',
+  'The brown uniform is issued. It is part of the job, not a suggestion.',
+  'A clean package car and a sharp uniform are company standards on every shift.',
+  'Safety rides are how management checks method and compliance.',
+  'An accident review can affect a bid. Members bring a steward.',
+  'DOT hours of service still apply to feeder and sleeper work.',
+  'Package car drivers are often under short-haul hours rules, not the long-haul clock.',
+  'A late air commit is a different miss than a late ground stop.',
+  'Saturday delivery is standard in much of the U.S. ground network.',
+  'UPS runs on a hub-and-spoke model, same idea as the airlines.',
+  'Louisville, Cologne, and regional U.S. air hubs connect the air network.',
+  'From a $100 loan in a Seattle cellar to 200 countries, that is the UPS arc.'
+];
+let teamsterIdx = Number(localStorage.getItem('slc-teamster-idx')||'-1');
+function showTeamster(){
+  const el = document.getElementById('teamsterText');
+  if(!el) return;
+  teamsterIdx = (teamsterIdx + 1) % TEAMSTER_FACTS.length;
+  localStorage.setItem('slc-teamster-idx', String(teamsterIdx));
+  el.textContent = TEAMSTER_FACTS[teamsterIdx];
+}
+let strongIdx = Number(localStorage.getItem('slc-strong-idx')||'-1');
+function showUnionStrong(){
+  const el = document.getElementById('unionStrongText');
+  if(!el) return;
+  strongIdx = (strongIdx + 1) % UNION_STRONG.length;
+  localStorage.setItem('slc-strong-idx', String(strongIdx));
+  el.textContent = UNION_STRONG[strongIdx];
+}
+let upsIdx = Number(localStorage.getItem('slc-ups-idx')||'-1');
+function showUpsFacts(){
+  const el = document.getElementById('upsFactsText');
+  if(!el) return;
+  upsIdx = (upsIdx + 1) % UPS_FACTS.length;
+  localStorage.setItem('slc-ups-idx', String(upsIdx));
+  el.textContent = UPS_FACTS[upsIdx];
+}
 
 async function refreshAll(){
   const status = document.getElementById('status');
@@ -957,6 +1175,9 @@ async function refreshAll(){
   try{ await loadRouteWinds(); }catch(e){}
   try{ await loadRadar(); }catch(e){}
   try{ await loadJoke(); }catch(e){}
+  try{ showTeamster(); }catch(e){}
+  try{ showUnionStrong(); }catch(e){}
+  try{ showUpsFacts(); }catch(e){}
   try{ await loadWindArrows(); }catch(e){}
   const when = utahTime(new Date(), false);
   if(status) status.textContent = 'Updated '+when;
