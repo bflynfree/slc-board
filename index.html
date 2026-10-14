@@ -81,8 +81,8 @@
   }
   #mapKey .row{display:flex;align-items:center;gap:6px;margin:3px 0}
   #mapKey .scale{width:168px;height:10px;border-radius:2px;display:block}
-  #mapKey .rainscale{background:linear-gradient(90deg,#b3e5fc,#29b6f6,#00e676,#ffeb3b,#ff9800,#f44336,#9c27b0,#e1bee7)}
-  #mapKey .snowscale{background:linear-gradient(90deg,#e3f2fd,#b3e5fc,#ffffff,#f8bbd0,#f48fb1)}
+  #mapKey .rainscale{background:linear-gradient(90deg,#00e676,#ffeb3b,#ff9800,#f44336,#9c27b0)}
+  #mapKey .snowscale{background:linear-gradient(90deg,#e3f2fd,#64b5f6,#7e57c2,#ffffff)}
   #mapKey .ticks{display:flex;justify-content:space-between;font-size:9px;color:#9ab;margin-top:1px}
   .leaflet-control-attribution{font-size:8px;background:rgba(7,18,31,.65);color:#9ab}
   .eta-col{
@@ -441,9 +441,7 @@ function radarLabel(ts){
 async function loadRadar(){
   try{
     if(!map || typeof L === 'undefined') return;
-    let j = null;
-    try{ j = await fetchT('https://api.librewxr.net/public/weather-maps.json', 12000); }catch(e){}
-    if(!j || !j.radar) j = await fetchT('https://api.rainviewer.com/public/weather-maps.json', 12000);
+    let j = await fetchT('https://api.librewxr.net/public/weather-maps.json', 12000);
     const host = j.host || 'https://api.librewxr.net';
     const past = ((j.radar && j.radar.past) ? j.radar.past : []).map(f=>({...f, forecast:false}));
     const nowcast = ((j.radar && j.radar.nowcast) ? j.radar.nowcast : []).map(f=>({...f, forecast:true}));
@@ -452,7 +450,7 @@ async function loadRadar(){
     radarFrames = frames;
     radarLayers.forEach(ly=>{ try{ map.removeLayer(ly); }catch(e){} });
     radarLayers = radarFrames.map(f => L.tileLayer(
-      host + f.path + '/256/{z}/{x}/{y}/2/1_1.png',
+      host + f.path + '/256/{z}/{x}/{y}/7/1_1.png',
       {opacity:0, zIndex:400, maxZoom:18, maxNativeZoom:7, tileSize:256}
     ));
     radarLayers.forEach(ly => ly.addTo(map));
