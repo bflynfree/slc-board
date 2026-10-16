@@ -178,13 +178,14 @@
   .wx.flash-both .windline{color:#ffe082;font-weight:700}
   .wx.flash-red{
     animation:flashR 2.8s ease-in-out infinite;
-    border-color:#ef5350;
+    border:4px solid #ff1744;
     background:#7f1d1d;
     color:#fff;
+    box-shadow:0 0 0 2px #ff1744, 0 0 22px 6px rgba(255,23,68,.75);
   }
   @keyframes flashR{
-    0%,100%{background:#7f1d1d;box-shadow:0 0 8px rgba(239,83,80,.4)}
-    50%{background:#991b1b;box-shadow:0 0 14px rgba(239,83,80,.7)}
+    0%,100%{background:#7f1d1d;box-shadow:0 0 0 2px #ff1744, 0 0 18px 4px rgba(255,23,68,.6)}
+    50%{background:#991b1b;box-shadow:0 0 0 3px #ff5252, 0 0 28px 8px rgba(255,23,68,.95)}
   }
   @keyframes flashY{
     0%,100%{background:#0b1c30;box-shadow:0 0 0 rgba(255,183,77,0)}
@@ -193,6 +194,13 @@
   .wx .windline{font-size:10px;margin-top:3px;color:var(--dim)}
   .wx.flash-yellow .windline{color:#ffcc80;font-weight:700}
   .wx.flash-red .windline{color:#fff;font-weight:700}
+  .wx.closed-red{
+    background:#7f1d1d;
+    border:4px solid #ff1744;
+    color:#fff;
+    box-shadow:0 0 0 2px #ff1744, 0 0 22px 6px rgba(255,23,68,.8);
+  }
+  .wx.closed-red .windline,.wx.closed-red .status{color:#fff;font-weight:700}
   .map-key{
     background:rgba(11,28,48,.92);color:#eaf6ff;padding:6px 8px;border-radius:6px;
     border:1px solid #1e4a72;font-size:10px;line-height:1.35;min-width:168px;
@@ -307,6 +315,7 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); });
 document.addEventListener('keydown', function(e){
   if((e.ctrlKey || e.metaKey) && (e.key==='+' || e.key==='-' || e.key==='=' || e.key==='0')) e.preventDefault();
 });
+const UDOT_KEY = 'd648ba067fdb4a58873564663a84dc46';
 const ORIGIN = { name:'Salt Lake City, UT', lat:40.7539165, lon:-112.0440868 };
 
 const DEST = [
@@ -880,8 +889,15 @@ function paintWx(cards){
     const miLine = isHub ? '' : (eta ? (eta.delayed && !eta.closed ? 'Check route' : (eta.distance!=null?fmtMi(eta.distance):'')) : '');
     const windPlace = (rw && rw.windLoc) || b.via || 'route';
     let flash='', windLabel = 'Clear';
-    if(windHigh){ flash='flash-red'; windLabel = 'Extreme Caution No LCV'; }
+    const udot = (window.UDOT_HITS && window.UDOT_HITS[b.p.name]) || [];
+    const interstateClosed = udot.some(h => h.interstate);
+    const noLcv = windHigh || interstateClosed || snowIce || lowVis;
+    if(noLcv){
+      flash='closed-red';
+      windLabel = interstateClosed ? 'Interstate Closed' : (snowIce ? 'Snow or Ice on Road' : (lowVis ? 'Low Visibility' : 'Winds 45+ No LCV'));
+    }
     else if(windCaution){ flash='flash-yellow'; windLabel = 'Caution'; }
+    else if(udot.length) windLabel = 'UDOT: ' + (udot[0].label||udot[0]);
     return `<div class="wx ${flash}" style="grid-column:${i<5?1:i-4};grid-row:${i<5?i+1:6}">
       <div class="name">${shortName(b.p.name)}<\/div>
       <div class="temp ${hot?'hot':''}">${Math.round(c.temperature_2m)}<small>°</small><\/div>
@@ -898,7 +914,7 @@ function paintWx(cards){
   const key = document.getElementById('flashKey');
   if(key){
     key.classList.toggle('show-y', html.includes('flash-yellow'));
-    key.classList.toggle('show-r', html.includes('flash-red'));
+    key.classList.toggle('show-r', html.includes('flash-red') || html.includes('closed-red'));
   }
 }
 
@@ -1177,6 +1193,7 @@ async function refreshAll(){
   try{ showUnionStrong(); }catch(e){}
   try{ showUpsFacts(); }catch(e){}
   try{ await loadWindArrows(); }catch(e){}
+  try{ await loadUdot(); }catch(e){}
   const when = utahTime(new Date(), false);
   if(status) status.textContent = 'Updated '+when;
 }
@@ -1218,6 +1235,72 @@ function paintWindArrows(rows){
     m.addTo(windLayer);
   });
   windLayer.addTo(map);
+}
+let udotLayer = null;
+function milesBetween(a, b){
+  const R = 3958.8;
+  const dLat = (b.lat-a.lat)*Math.PI/180;
+  const dLon = (b.lon-a.lon)*Math.PI/180;
+  const la1 = a.lat*Math.PI/180, la2 = b.lat*Math.PI/180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.min(1, Math.sqrt(h)));
+}
+function nearCorridor(pt, dest, band){
+  const steps = 12;
+  for(let i=0;i<=steps;i++){
+    const t = i/steps;
+    const p = {lat: ORIGIN.lat + (dest.lat-ORIGIN.lat)*t, lon: ORIGIN.lon + (dest.lon-ORIGIN.lon)*t};
+    if(milesBetween(pt, p) <= band) return true;
+  }
+  return false;
+}
+async function loadUdot(){
+  if(!UDOT_KEY) return;
+  const base = 'https://www.udottraffic.utah.gov/api/v2/get/';
+  let events = [], passes = [];
+  try{ events = await fetchT(base+'event?key='+UDOT_KEY+'&format=json', 12000); }catch(e){}
+  try{ passes = await fetchT(base+'mountainpasses?key='+UDOT_KEY+'&format=json', 12000); }catch(e){}
+  const closures = (Array.isArray(events)?events:[]).filter(e => String(e.EventCategory||'').toLowerCase()==='road closure' && e.Latitude && e.Longitude);
+  const closedPasses = (Array.isArray(passes)?passes:[]).filter(p => {
+    const info = p.SeasonalInfo || [];
+    return info.some(s => /closed/i.test(s.SeasonalClosureStatus||'')) && p.Latitude && p.Longitude;
+  });
+  const hits = {};
+  DEST.forEach(d => { hits[d.name] = []; });
+  closures.forEach(e => {
+    const label = e.RoadwayName || e.Name || e.Location || 'Utah closure';
+    const interstate = /\bI[-\s]?\d|\bInterstate\b/i.test(label);
+    const pt = {lat:e.Latitude, lon:e.Longitude};
+    DEST.forEach(d => {
+      if(nearCorridor(pt, d, 25)) hits[d.name].push({label, interstate});
+    });
+  });
+  closedPasses.forEach(p => {
+    const pt = {lat:p.Latitude, lon:p.Longitude};
+    DEST.forEach(d => {
+      if(nearCorridor(pt, d, 30)) hits[d.name].push({label:(p.Name||'Pass')+' closed', interstate:false});
+    });
+  });
+  window.UDOT_HITS = hits;
+  if(map && typeof L !== 'undefined'){
+    if(udotLayer){ try{ map.removeLayer(udotLayer); }catch(e){} }
+    udotLayer = L.layerGroup();
+    closures.forEach(e => {
+      const road = String(e.RoadwayName||e.Name||e.Location||'');
+      const interstate = /\bI[-\s]?\d|\bInterstate\b/i.test(road);
+      const color = interstate ? '#ef5350' : '#ffb74d';
+      L.circleMarker([e.Latitude, e.Longitude], {radius:6, color, fillColor:color, fillOpacity:.85, weight:1})
+        .bindTooltip((road||'Road closure')+' · UDOT', {direction:'top'})
+        .addTo(udotLayer);
+    });
+    closedPasses.forEach(p => {
+      L.circleMarker([p.Latitude, p.Longitude], {radius:6, color:'#ffb74d', fillColor:'#ffb74d', fillOpacity:.85, weight:1})
+        .bindTooltip((p.Name||'Pass')+' closed · UDOT', {direction:'top'})
+        .addTo(udotLayer);
+    });
+    udotLayer.addTo(map);
+  }
+  if(LAST_WX.length) paintWx(LAST_WX);
 }
 (async()=>{
   try{ initMap(); }catch(e){
