@@ -27,7 +27,10 @@
   #clock { font-size: 13px; color: var(--ice); margin-top: 2px; font-variant-numeric: tabular-nums; }
   .status { font-size: 11px; color: var(--dim); }
   #mapWrap {
-    height: 280px; position: relative; background: #0a2033;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    background: #0a2033;
     border-bottom: 1px solid var(--line);
   }
   #map { height: 100%; width: 100%; }
@@ -43,26 +46,26 @@
   .snowscale { background: linear-gradient(90deg,#e3f2fd,#64b5f6,#7e57c2,#ffffff); }
   .content { padding: 12px; }
   .panel {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-    padding: 10px 12px; margin-bottom: 10px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 12px;
   }
-  .panel h2 { font-size: 11px; letter-spacing: .1em; color: var(--ice); margin-bottom: 4px; }
-  .panel p { font-size: 13.5px; line-height: 1.35; }
-  .cards { display: flex; flex-direction: column; gap: 8px; }
+  .panel h2 { font-size: 12px; letter-spacing: .1em; color: var(--ice); margin-bottom: 6px; }
+  .panel p { font-size: 15px; line-height: 1.4; }
+  .cards { display: flex; flex-direction: column; gap: 12px; }
   .card {
-    background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--ice);
-    border-radius: 10px; padding: 10px 12px;
-    display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: start;
+    background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--ice);
+    border-radius: 12px; padding: 14px 16px;
+    display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center;
   }
   .card.closed { border-left-color: #ef5350; background: #2a1212; }
-  .card .name { font-weight: 700; font-size: 15px; }
-  .card .temp { font-size: 26px; font-weight: 800; text-align: right; }
-  .card .meta { grid-column: 1 / -1; font-size: 12.5px; color: var(--dim); line-height: 1.3; }
-  .card .drive { color: var(--ice); font-weight: 600; }
-  .card .note { color: #ffb74d; font-size: 11px; }
-  .fc { display: flex; gap: 6px; margin-top: 4px; font-size: 11px; }
+  .card .name { font-weight: 800; font-size: 18px; letter-spacing: 0.01em; }
+  .card .temp { font-size: 32px; font-weight: 800; text-align: right; line-height: 1; }
+  .card .meta { grid-column: 1 / -1; font-size: 14px; color: var(--dim); line-height: 1.4; }
+  .card .drive { color: var(--ice); font-weight: 700; }
+  .card .note { color: #ffb74d; font-size: 12px; }
+  .fc { display: flex; gap: 8px; margin-top: 6px; font-size: 12px; }
   .fc div { text-align: center; flex: 1; }
-  .fc .d { color: var(--ice); font-weight: 600; }
+  .fc .d { color: var(--ice); font-weight: 700; }
   footer { text-align: center; font-size: 11px; color: var(--dim); padding: 16px 12px 24px; }
   .leaflet-control-attribution { font-size: 8px !important; }
 </style>
@@ -101,7 +104,7 @@
     <p id="jokeText">…</p>
   </div>
 
-  <h2 style="font-size:12px;letter-spacing:.1em;color:var(--ice);margin:14px 0 8px">ROUTE WEATHER & DRIVE TIMES</h2>
+  <h2 style="font-size:13px;letter-spacing:.1em;color:var(--ice);margin:16px 0 10px">ROUTE WEATHER & DRIVE TIMES</h2>
   <div class="cards" id="wxGrid"><div style="color:var(--dim);padding:8px">Loading…</div></div>
 </div>
 
