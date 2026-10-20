@@ -114,6 +114,13 @@
   #joke .jh{font-size:clamp(10px,1.1vh,14px);letter-spacing:.08em;color:var(--ice);font-family:Orbitron,sans-serif;margin-bottom:3px}
   #joke .jsrc{color:var(--dim);letter-spacing:0;font-family:Roboto,sans-serif;font-size:9px;margin-left:6px}
   #joke .jp{color:var(--dim);margin-top:3px}
+  #qrBox{
+    position:absolute;left:10px;bottom:112px;z-index:500;
+    background:rgba(11,28,48,.9);border:1px solid #1e4a72;border-radius:4px;
+    padding:6px 7px;text-align:center;pointer-events:none;
+  }
+  #qrBox img{width:96px;height:96px;display:block;margin:0 auto 4px;background:#fff;border-radius:2px;padding:3px}
+  #qrBox .ql{font-size:10px;letter-spacing:.08em;color:#ffcc80;font-family:Orbitron,sans-serif}
   #teamster{
     position:absolute;left:10px;top:132px;z-index:500;
     width:220px;max-height:88px;
@@ -298,6 +305,7 @@
       </div>
       <div id="teamster"><div class="th">TEAMSTERS</div><div id="teamsterText">…</div></div>
       <div id="unionStrong"><div class="th">UNION STRONG!</div><div id="unionStrongText">…</div></div>
+      <div id="qrBox"><img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Fbflynfree.github.io%2Fslc-board%2Fphone.html" alt="Mobile Version"><div class="ql">MOBILE VERSION</div></div>
       <div id="joke"><div class="jh">DAD JOKE <span class="jsrc" id="jokeSrc"></span></div><div id="jokeText">…</div></div>
     </div>
     <div class="wx-grid" id="wxGrid">Loading…</div>
