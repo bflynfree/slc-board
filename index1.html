@@ -29,7 +29,7 @@
   #mapWrap {
     position: relative;
     width: 100%;
-    height: 160px;
+    height: 200px;
     background: #0a2033;
     border-bottom: 1px solid var(--line);
   }
@@ -108,7 +108,12 @@
     <p id="jokeText">…</p>
   </div>
 
-  <h2 style="font-size:13px;letter-spacing:.1em;color:var(--ice);margin:16px 0 10px">ROUTE WEATHER & DRIVE TIMES</h2>
+  <details id="cityFilter" open>
+    <summary style="cursor:pointer;font-size:13px;letter-spacing:.1em;color:var(--ice);margin:16px 0 8px;font-weight:700">SELECT CITIES</summary>
+    <div id="cityChecks" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-bottom:12px;font-size:13px"></div>
+  </details>
+
+  <h2 style="font-size:13px;letter-spacing:.1em;color:var(--ice);margin:8px 0 10px">ROUTE WEATHER & DRIVE TIMES</h2>
   <div class="cards" id="wxGrid"><div style="color:var(--dim);padding:8px">Loading…</div></div>
 </div>
 
@@ -279,10 +284,17 @@ async function loadWeather() {
   const grid = document.getElementById('wxGrid');
   grid.innerHTML = '';
   const status = document.getElementById('status');
+  const selected = getSelectedCities();
+  const places = CARD_PLACES.filter(p => selected.includes(p.name));
+  if (!places.length) {
+    grid.innerHTML = '<div style="color:var(--dim);padding:8px;grid-column:1/-1">No cities selected</div>';
+    status.textContent = 'No cities selected';
+    return;
+  }
   status.textContent = 'Updating routes & weather…';
   await loadRoutes();
   let done = 0;
-  for (const p of CARD_PLACES) {
+  for (const p of places) {
     const wx = await nwsForecast(p);
     const eta = LAST_ETA.find(e => e.name === p.name) || {};
     const card = document.createElement('div');
@@ -307,9 +319,45 @@ async function loadWeather() {
       </div>`;
     grid.appendChild(card);
     done++;
-    status.textContent = `Loaded ${done}/${CARD_PLACES.length}`;
+    status.textContent = `Loaded ${done}/${places.length}`;
   }
   status.textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', { timeZone: 'America/Denver', hour: 'numeric', minute: '2-digit' }) + ' MST';
+}
+
+function getSelectedCities() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('slc-cities') || 'null');
+    if (Array.isArray(saved) && saved.length) return saved;
+  } catch (e) {}
+  return CARD_PLACES.map(p => p.name);
+}
+function setSelectedCities(names) {
+  localStorage.setItem('slc-cities', JSON.stringify(names));
+}
+function buildCityFilter() {
+  const box = document.getElementById('cityChecks');
+  if (!box) return;
+  const selected = new Set(getSelectedCities());
+  box.innerHTML = '';
+  CARD_PLACES.forEach(p => {
+    const label = document.createElement('label');
+    label.style.display = 'flex';
+    label.style.alignItems = 'center';
+    label.style.gap = '6px';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = p.name;
+    cb.checked = selected.has(p.name);
+    cb.addEventListener('change', () => {
+      const names = Array.from(box.querySelectorAll('input:checked')).map(el => el.value);
+      setSelectedCities(names);
+      loadWeather();
+    });
+    const short = (p.name || '').replace(/, (UT|ID|MT|WY|CO|NV)$/, '');
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(short));
+    box.appendChild(label);
+  });
 }
 
 // Full facts (from original)
@@ -430,6 +478,7 @@ async function loadJoke() {
 loadJoke();
 setInterval(loadJoke, 90000);
 
+buildCityFilter();
 initMap();
 loadWeather();
 setInterval(loadWeather, 15 * 60 * 1000);
