@@ -122,8 +122,8 @@
   </div>
 
   <details id="cityFilter" open>
-    <summary style="cursor:pointer;font-size:13px;letter-spacing:.1em;color:var(--ice);margin:16px 0 8px;font-weight:700">SELECT CITIES</summary>
-    <div id="cityChecks" style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-bottom:12px;font-size:13px"></div>
+    <summary style="cursor:pointer;font-size:26px;letter-spacing:.1em;color:var(--ice);margin:16px 0 8px;font-weight:700">SELECT CITIES</summary>
+    <div id="cityChecks" style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-bottom:12px;font-size:26px"></div>
   </details>
 
   <h2 style="font-size:13px;letter-spacing:.1em;color:var(--ice);margin:8px 0 10px">ROUTE WEATHER & DRIVE TIMES</h2>
@@ -378,7 +378,8 @@ function buildCityFilter() {
     label.style.alignItems = 'center';
     label.style.gap = '6px';
     const cb = document.createElement('input');
-    cb.type = 'checkbox';
+    cb.style.width = '28px';
+    cb.style.height = '28px';
     cb.value = p.name;
     cb.checked = selected.has(p.name);
     cb.addEventListener('change', () => {
