@@ -183,7 +183,7 @@ async function fetchT(url, ms = 10000, headers = {}) {
 
 function initMap() {
   if (typeof L === 'undefined') { document.getElementById('status').textContent = 'Map library failed'; return; }
-  map = L.map('map', { zoomControl: false, attributionControl: true, dragging: true, touchZoom: true, scrollWheelZoom: false });
+  map = L.map('map', { zoomControl: false, attributionControl: false, dragging: true, touchZoom: true, scrollWheelZoom: false });
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 18, attribution: 'Esri'
   }).addTo(map);
