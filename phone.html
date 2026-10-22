@@ -221,8 +221,8 @@ function showRadarFrame(i) {
   const el = document.getElementById('radarClock');
   if (el && f) {
     const d = new Date(f.time * 1000);
-    const label = d.toLocaleString('en-US', { timeZone: 'America/Denver', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-    el.textContent = `${f.forecast ? 'Forecast' : 'Radar'} ${i + 1}/${radarFrames.length} · ${label}`;
+    const label = d.toLocaleString('en-US', { timeZone: 'America/Denver', hour: 'numeric', minute: '2-digit' });
+    el.textContent = label;
   }
 }
 
