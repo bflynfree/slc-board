@@ -323,7 +323,7 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); });
 document.addEventListener('keydown', function(e){
   if((e.ctrlKey || e.metaKey) && (e.key==='+' || e.key==='-' || e.key==='=' || e.key==='0')) e.preventDefault();
 });
-const UDOT_KEY = 'd648ba067fdb4a58873564663a84dc46';
+const UDOT_RELAY = 'https://udot-relay.bflynfree.workers.dev/';
 const ORIGIN = { name:'Salt Lake City, UT', lat:40.7539165, lon:-112.0440868 };
 
 const DEST = [
@@ -1263,11 +1263,10 @@ function nearCorridor(pt, dest, band){
   return false;
 }
 async function loadUdot(){
-  if(!UDOT_KEY) return;
-  const base = 'https://www.udottraffic.utah.gov/api/v2/get/';
+  if(!UDOT_RELAY) return;
   let events = [], passes = [];
-  try{ events = await fetchT(base+'event?key='+UDOT_KEY+'&format=json', 12000); }catch(e){}
-  try{ passes = await fetchT(base+'mountainpasses?key='+UDOT_KEY+'&format=json', 12000); }catch(e){}
+  try{ events = await fetchT(UDOT_RELAY+'?type=event', 12000); }catch(e){}
+  try{ passes = await fetchT(UDOT_RELAY+'?type=mountainpasses', 12000); }catch(e){}
   const closures = (Array.isArray(events)?events:[]).filter(e => String(e.EventCategory||'').toLowerCase()==='road closure' && e.Latitude && e.Longitude);
   const closedPasses = (Array.isArray(passes)?passes:[]).filter(p => {
     const info = p.SeasonalInfo || [];
