@@ -576,8 +576,10 @@ function foldWind(list){
 async function loadRouteWinds(){
   const cached = loadWindCache();
   if(cached){
-    Object.assign(ROUTE_WIND, cached);
+    Object.assign(ROUTE_WIND, cached.rows);
+    if(cached.pts) Object.assign(ROUTE_PTS, cached.pts);
     if(LAST_WX.length) paintWx(LAST_WX);
+    paintWinterHits();
     return;
   }
   for(const names of CORRIDORS){
@@ -606,16 +608,17 @@ async function loadRouteWinds(){
   }
   saveWindCache();
   if(LAST_WX.length) paintWx(LAST_WX);
+  paintWinterHits();
 }
 function loadWindCache(){
   try{
-    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v10')||'null');
-    if(j && j.ts && Date.now()-j.ts < 2*60*60*1000) return j.rows;
+    const j = JSON.parse(localStorage.getItem('slc-wind-cache-v11')||'null');
+    if(j && j.ts && Date.now()-j.ts < 2*60*60*1000) return j;
   }catch(e){}
   return null;
 }
 function saveWindCache(){
-  try{ localStorage.setItem('slc-wind-cache-v10', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND})); }catch(e){}
+  try{ localStorage.setItem('slc-wind-cache-v11', JSON.stringify({ts:Date.now(), rows: ROUTE_WIND, pts: ROUTE_PTS})); }catch(e){}
 }
 
 const CORRIDORS = [
