@@ -312,7 +312,7 @@
   </div>
   <footer>
     <span class="left"><span class="credit">Maintained by Austin Platt</span><span id="status"></span></span>
-    <span class="flash-key" id="flashKey"><span class="y" id="flashY">Caution Wind over 35 mph, gusts over 45 mph or National Weather Advisory</span><span class="sep" id="flashSep"> · </span><span class="r" id="flashR">Extreme Caution No LCV Consistent Winds over 45 mph</span></span>
+    <span class="flash-key" id="flashKey"><span class="y" id="flashY">Caution Wind over 35 mph, gusts over 45 mph or other NWS Advisory</span><span class="sep" id="flashSep"> · </span><span class="r" id="flashR">No LCV — Winds 45+, Snow/Ice, or Winter Weather Advisory in Effect</span></span>
     <span class="forecast-tag">Forecast</span>
   </footer>
 </div>
@@ -496,6 +496,7 @@ function showRadarFrame(i){
 
 const wxPins = {};
 const ROUTE_WIND = {};
+let ROUTE_PTS = {};
 
 function sampleCoords(coords, n){
   if(!coords || !coords.length) return [];
@@ -597,6 +598,7 @@ async function loadRouteWinds(){
         const slice = winds.slice(0, Math.max(cut, used+1));
         used = slice.length;
         ROUTE_WIND[s.name] = foldWind(slice);
+        ROUTE_PTS[s.name] = pts.slice(0, Math.max(cut, 1));
       });
     }catch(e){
       stops.forEach(s => { if(!ROUTE_WIND[s.name]) ROUTE_WIND[s.name] = null; });
@@ -727,12 +729,9 @@ async function weather(){
   const cards = [];
   const wxPlaces = CARD_PLACES.slice();
   const cached = loadWxCache();
-  if(cached && cached.length===wxPlaces.length){
-    paintWx(cached);
-    return;
-  }
+  const useCache = !!(cached && cached.length===wxPlaces.length);
   await Promise.all(wxPlaces.map(async p => {
-    const j = await nwsForecast(p);
+    const j = useCache ? ((cached.find(c=>c.name===p.name)||{}).j || null) : await nwsForecast(p);
     const alert = await nwsAlert(p);
     cards.push({p, j, alert});
     paintWx(cards.slice());
@@ -766,10 +765,13 @@ function codeFromText(t){
   if(main.includes('sun')||main.includes('clear')) return 0;
   return 2;
 }
+const WINTER_RE = /Winter Weather Advisory|Winter Storm Watch|Winter Storm Warning|Blizzard Watch|Blizzard Warning|Ice Storm Watch|Ice Storm Warning/i;
 async function nwsAlert(p){
   try{
     const j = await fetchT(`https://api.weather.gov/alerts/active?point=${p.lat.toFixed(4)},${p.lon.toFixed(4)}`, 8000, {Accept:'application/geo+json'});
-    const hit = (j.features||[]).find(f => /Severe Thunderstorm Warning|Tornado Warning|Winter Storm Warning|Blizzard Warning|Ice Storm Warning|High Wind Warning/i.test((f.properties&&f.properties.event)||''));
+    const feats = j.features||[];
+    const winter = feats.find(f => WINTER_RE.test((f.properties&&f.properties.event)||''));
+    const hit = winter || feats.find(f => /Severe Thunderstorm Warning|Tornado Warning|High Wind Warning/i.test((f.properties&&f.properties.event)||''));
     return hit ? hit.properties.event : null;
   }catch(e){ return null; }
 }
@@ -899,10 +901,11 @@ function paintWx(cards){
     let flash='', windLabel = 'Clear';
     const udot = (window.UDOT_HITS && window.UDOT_HITS[b.p.name]) || [];
     const interstateClosed = udot.some(h => h.interstate);
-    const noLcv = windHigh || interstateClosed || snowIce || lowVis;
+    const winterEvent = (window.WINTER_HITS && window.WINTER_HITS[b.p.name]) || (b.official && WINTER_RE.test(b.official) ? b.official : null) || null;
+    const noLcv = windHigh || interstateClosed || snowIce || lowVis || !!winterEvent;
     if(noLcv){
       flash='closed-red';
-      windLabel = interstateClosed ? 'Interstate Closed' : (snowIce ? 'Snow or Ice on Road' : (lowVis ? 'Low Visibility' : 'Winds 45+ No LCV'));
+      windLabel = interstateClosed ? 'Interstate Closed' : (winterEvent ? winterEvent : (snowIce ? 'Snow or Ice on Road' : (lowVis ? 'Low Visibility' : 'Winds 45+ No LCV')));
     }
     else if(windCaution){ flash='flash-yellow'; windLabel = 'Caution'; }
     else if(udot.length) windLabel = 'UDOT: ' + (udot[0].label||udot[0]);
@@ -1202,6 +1205,7 @@ async function refreshAll(){
   try{ showUpsFacts(); }catch(e){}
   try{ await loadWindArrows(); }catch(e){}
   try{ await loadUdot(); }catch(e){}
+  try{ await loadWinterZones(); }catch(e){}
   const when = utahTime(new Date(), false);
   if(status) status.textContent = 'Updated '+when;
 }
@@ -1262,6 +1266,97 @@ function nearCorridor(pt, dest, band){
   }
   return false;
 }
+// ---- Winter advisory zones: cards flash red when the corridor crosses an active winter alert ----
+const WINTER_STATES = ['UT','ID','MT','WY','CO','NV'];
+let WINTER_CACHE = null;
+const WINTER_CACHE_MS = 15*60*1000;
+function loadZoneCache(){ try{ return JSON.parse(localStorage.getItem('slc-zone-cache-v1')||'{}'); }catch(e){ return {}; } }
+function saveZoneCache(z){ try{ localStorage.setItem('slc-zone-cache-v1', JSON.stringify(z)); }catch(e){} }
+async function fetchZonePoly(z){
+  const cache = loadZoneCache();
+  if(cache[z]) return cache[z];
+  const j = await fetchT(`https://api.weather.gov/zones/forecast/${z}`, 8000, {Accept:'application/geo+json'});
+  const c = (j.geometry && j.geometry.coordinates) || null;
+  if(c){ cache[z] = c; saveZoneCache(cache); }
+  return c;
+}
+function ringsOf(coords){
+  const out = [];
+  (function walk(n){
+    if(!n || !n.length) return;
+    if(typeof n[0][0] === 'number') out.push(n);
+    else n.forEach(walk);
+  })(coords);
+  return out;
+}
+function pip(lon, lat, ring){
+  let inside = false;
+  for(let i=0, j=ring.length-1; i<ring.length; j=i++){
+    const xi=ring[i][0], yi=ring[i][1], xj=ring[j][0], yj=ring[j][1];
+    if(((yi>lat)!==(yj>lat)) && (lon < (xj-xi)*(lat-yi)/(yj-yi)+xi)) inside = !inside;
+  }
+  return inside;
+}
+function inAnyPoly(lon, lat, polys){
+  for(const c of polys){ for(const ring of ringsOf(c)){ if(pip(lon,lat,ring)) return true; } }
+  return false;
+}
+function corridorSamples(p){
+  const rp = ROUTE_PTS[p.name];
+  if(rp && rp.length>1){
+    const s = sampleCoords(rp, 13).map(c=>[c[1], c[0]]);
+    if(s.length>1) return s;
+  }
+  const out = [];
+  for(let i=0;i<13;i++){
+    const t=i/12;
+    out.push([ORIGIN.lat+(p.lat-ORIGIN.lat)*t, ORIGIN.lon+(p.lon-ORIGIN.lon)*t]);
+  }
+  return out;
+}
+function paintWinterHits(){
+  const hits = {};
+  ALL.forEach(x => { hits[x.name] = null; });
+  if(WINTER_CACHE){
+    for(const a of WINTER_CACHE.alerts){
+      ALL.forEach(x => {
+        if(hits[x.name]) return;
+        const cands = [[x.lat, x.lon]].concat(corridorSamples(x));
+        if(cands.some(pt => inAnyPoly(pt[1], pt[0], a.polys))) hits[x.name] = a.event;
+      });
+    }
+  }
+  window.WINTER_HITS = hits;
+  if(LAST_WX.length) paintWx(LAST_WX);
+}
+async function loadWinterZones(){
+  try{
+    if(WINTER_CACHE && Date.now()-WINTER_CACHE.ts < WINTER_CACHE_MS){ paintWinterHits(); return; }
+    const alerts = [];
+    await Promise.all(WINTER_STATES.map(async st => {
+      try{
+        const j = await fetchT(`https://api.weather.gov/alerts/active?area=${st}`, 8000, {Accept:'application/geo+json'});
+        (j.features||[]).forEach(f => {
+          const ev = f.properties && f.properties.event;
+          if(ev && WINTER_RE.test(ev)){
+            const areaDesc = f.properties.areaDesc||'';
+            if(alerts.some(a=>a.event===ev && a.areaDesc===areaDesc)) return;
+            alerts.push({event:ev, areaDesc, polys:[], zones:((f.properties.geocode||{}).UGC)||[]});
+          }
+        });
+      }catch(e){}
+    }));
+    for(const a of alerts){
+      for(const z of a.zones){
+        try{ const c = await fetchZonePoly(z); if(c) a.polys.push(c); }catch(e){}
+      }
+    }
+    WINTER_CACHE = {ts:Date.now(), alerts: alerts.filter(a=>a.polys.length)};
+    paintWinterHits();
+  }catch(e){}
+}
+// ---- end winter advisory zones ----
+
 async function loadUdot(){
   if(!UDOT_RELAY) return;
   let events = [], passes = [];
